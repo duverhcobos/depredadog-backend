@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+*.tsbuildinfo
+
+# Env & secrets — NUNCA commitear
+.env
+.env.test
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Tests
+coverage/
+.nyc_output/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
