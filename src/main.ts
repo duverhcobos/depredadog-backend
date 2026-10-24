@@ -26,7 +26,7 @@ async function bootstrap() {
 
   if (!config.get<boolean>('app.isProduction')!) {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('PCalientes API')
+      .setTitle('Depredadog API')
       .setVersion('1.0')
       .addBearerAuth()
       .build();

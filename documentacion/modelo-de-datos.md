@@ -1,4 +1,4 @@
-# Modelo de Datos — PCalientes
+# Modelo de Datos — Depredadog
 
 Documento vivo del modelo de datos del producto. Es la **fuente diseñada, no la ley** — ver skill `modelo-evolucion`: si la implementación descubre algo que este documento no cubre, la desviación se propone, se aprueba y este archivo se actualiza en la misma propuesta.
 
@@ -254,7 +254,7 @@ Una fila — configuración global del negocio (single-tenant).
 | Columna | Tipo | Null | Notas |
 |---|---|---|---|
 | `id` | uuid PK | | |
-| `name` | varchar(150) | NOT NULL | "PCalientes" |
+| `name` | varchar(150) | NOT NULL | "Depredadog" |
 | `phone` | varchar(20) | NULL | |
 | `address` | varchar(255) | NULL | Dirección del local |
 | `logo_url` | varchar(500) | NULL | |

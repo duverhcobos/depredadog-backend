@@ -2033,7 +2033,7 @@ export class EmailSenderService {
   async sendVerificationCode(email: string, code: string): Promise<void> {
     await this.send(
       email,
-      'Your PCalientes verification code',
+      'Your Depredadog verification code',
       `<p>Your verification code is <strong>${code}</strong>. It expires in 15 minutes.</p>`,
       () => this.logCode('verification', email, code),
     );
@@ -2042,7 +2042,7 @@ export class EmailSenderService {
   async sendPasswordResetCode(email: string, code: string): Promise<void> {
     await this.send(
       email,
-      'Your PCalientes password reset code',
+      'Your Depredadog password reset code',
       `<p>Your password reset code is <strong>${code}</strong>. It expires in 15 minutes.</p>`,
       () => this.logCode('password reset', email, code),
     );
@@ -2213,7 +2213,7 @@ import { registerAs } from '@nestjs/config';
 
 export default registerAs('email', () => ({
   resendApiKey: process.env.RESEND_API_KEY || null,
-  from: process.env.EMAIL_FROM ?? 'PCalientes <onboarding@resend.dev>',
+  from: process.env.EMAIL_FROM ?? 'Depredadog <onboarding@resend.dev>',
 }));
 ```
 
@@ -2498,7 +2498,7 @@ GOOGLE_CLIENT_IDS=
 # EMAIL_FROM: remitente verificado en Resend — con dominio sin verificar solo
 # sirve 'onboarding@resend.dev' hacia el email de la propia cuenta.
 RESEND_API_KEY=
-EMAIL_FROM=PCalientes <onboarding@resend.dev>
+EMAIL_FROM=Depredadog <onboarding@resend.dev>
 ```
 
 ## 62. `.env` (archivo existente — actualización, gitignored)
@@ -2514,7 +2514,7 @@ JWT_REFRESH_TTL_DAYS=30
 AUTH_CODE_TTL_MINUTES=15
 GOOGLE_CLIENT_IDS=
 RESEND_API_KEY=
-EMAIL_FROM=PCalientes <onboarding@resend.dev>
+EMAIL_FROM=Depredadog <onboarding@resend.dev>
 ```
 
 ## 63. `.env.test` (archivo existente — actualización, gitignored)
@@ -2530,7 +2530,7 @@ JWT_REFRESH_TTL_DAYS=30
 AUTH_CODE_TTL_MINUTES=15
 GOOGLE_CLIENT_IDS=
 RESEND_API_KEY=
-EMAIL_FROM=PCalientes <onboarding@resend.dev>
+EMAIL_FROM=Depredadog <onboarding@resend.dev>
 ```
 
 ## 64. `package.json` (archivo existente — actualización)
@@ -4844,7 +4844,7 @@ describe('EmailSenderService', () => {
 
   it('con API key → POST a la API de Resend', async () => {
     config.get.mockImplementation((key: string) =>
-      key === 'email.resendApiKey' ? 're_test' : 'PCalientes <onboarding@resend.dev>',
+      key === 'email.resendApiKey' ? 're_test' : 'Depredadog <onboarding@resend.dev>',
     );
     fetchSpy.mockResolvedValue(new Response('{}', { status: 200 }));
 
@@ -4889,7 +4889,7 @@ describe('EmailSenderService', () => {
 **Ruta:** `documentacion/api/README.md`
 
 ```markdown
-# API — PCalientes
+# API — Depredadog
 
 Contrato para consumidores de la API (app Flutter y futuros integradores).
 
@@ -5330,7 +5330,7 @@ fallback que loguea el código (dev local + e2e por spy).
 ## Qué falta
 
 - Registrar/verificar un dominio en Resend (DNS: SPF/DKIM) — requiere dominio propio.
-- `EMAIL_FROM` con ese dominio (ej. `PCalientes <no-reply@tudominio.com>`).
+- `EMAIL_FROM` con ese dominio (ej. `Depredadog <no-reply@tudominio.com>`).
 - `RESEND_API_KEY` de producción en las env vars del entorno real (`env-secrets`).
 
 ## Camino de resolución

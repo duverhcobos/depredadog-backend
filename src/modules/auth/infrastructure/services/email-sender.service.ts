@@ -18,7 +18,7 @@ export class EmailSenderService implements IEmailSender {
   async sendVerificationCode(email: string, code: string): Promise<void> {
     await this.send(
       email,
-      'Your PCalientes verification code',
+      'Your Depredadog verification code',
       `<p>Your verification code is <strong>${code}</strong>. It expires in 15 minutes.</p>`,
       () => this.logCode('verification', email, code),
     );
@@ -27,7 +27,7 @@ export class EmailSenderService implements IEmailSender {
   async sendPasswordResetCode(email: string, code: string): Promise<void> {
     await this.send(
       email,
-      'Your PCalientes password reset code',
+      'Your Depredadog password reset code',
       `<p>Your password reset code is <strong>${code}</strong>. It expires in 15 minutes.</p>`,
       () => this.logCode('password reset', email, code),
     );

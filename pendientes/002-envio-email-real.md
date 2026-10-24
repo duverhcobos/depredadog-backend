@@ -15,7 +15,7 @@ fallback que loguea el código (dev local + e2e por spy).
 ## Qué falta
 
 - Registrar/verificar un dominio en Resend (DNS: SPF/DKIM) — requiere dominio propio.
-- `EMAIL_FROM` con ese dominio (ej. `PCalientes <no-reply@tudominio.com>`).
+- `EMAIL_FROM` con ese dominio (ej. `Depredadog <no-reply@tudominio.com>`).
 - `RESEND_API_KEY` de producción en las env vars del entorno real (`env-secrets`).
 
 ## Camino de resolución

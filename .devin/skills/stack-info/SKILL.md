@@ -1,6 +1,6 @@
 ---
 name: stack-info
-description: Stack tecnológico del backend NestJS de PCalientes (framework, DB, package manager, auth, OS)
+description: Stack tecnológico del backend NestJS de Depredadog (framework, DB, package manager, auth, OS)
 allowed-tools:
   - read
   - grep
@@ -10,7 +10,7 @@ triggers:
   - model
 ---
 
-Referencia del stack tecnológico del backend **NestJS** de PCalientes (scaffold `nest new` + dependencias base ya instaladas), confirmada contra `package.json`. Usar esta información como base antes de sugerir librerías, comandos o patrones — nunca asumir un stack distinto al descrito acá.
+Referencia del stack tecnológico del backend **NestJS** de Depredadog (scaffold `nest new` + dependencias base ya instaladas), confirmada contra `package.json`. Usar esta información como base antes de sugerir librerías, comandos o patrones — nunca asumir un stack distinto al descrito acá.
 
 - **Framework**: NestJS 11 (`nest new`, modo `--strict`). La app arranca mínima (`src/app.module.ts`, `src/main.ts`); la estructura DDD por módulos (`src/modules/<modulo>/`, `src/common/`, `src/infrastructure/`) se crea siguiendo la skill `module-structure` a medida que aparecen los primeros endpoints.
 - **Base de datos**: PostgreSQL + TypeORM 0.3 (`@nestjs/typeorm`, `typeorm`, `pg` instalados). `synchronize` debe quedar atado a desarrollo; en producción `false` y las migraciones son obligatorias — ver skill `migrations-workflow`.

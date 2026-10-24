@@ -40,7 +40,7 @@ describe('EmailSenderService', () => {
     config.get.mockImplementation((key: string) =>
       key === 'email.resendApiKey'
         ? 're_test'
-        : 'PCalientes <onboarding@resend.dev>',
+        : 'Depredadog <onboarding@resend.dev>',
     );
     fetchSpy.mockResolvedValue(new Response('{}', { status: 200 }));
 

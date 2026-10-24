@@ -1,6 +1,6 @@
 # pcalientes_backend
 
-Backend de **PCalientes** — **NestJS + TypeORM + PostgreSQL** con convenciones DDD, workflow de propuestas y subagentes de desarrollo.
+Backend de **Depredadog** — **NestJS + TypeORM + PostgreSQL** con convenciones DDD, workflow de propuestas y subagentes de desarrollo.
 
 ## Qué incluye
 

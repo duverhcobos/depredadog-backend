@@ -1,6 +1,6 @@
 # Propuesta: Bootstrap del backend — Config, TypeORM, filtros, logger, health
 
-Infraestructura mínima para que el scaffold `nest new` pueda correr la app real de PCalientes: ConfigModule con validación de entorno, TypeORM + migraciones (synchronize siempre `false`), filtro global de excepciones por Strategy, throttler global, logger Winston a archivo, endpoint `/health`, y setup de e2e con BD de test.
+Infraestructura mínima para que el scaffold `nest new` pueda correr la app real de Depredadog: ConfigModule con validación de entorno, TypeORM + migraciones (synchronize siempre `false`), filtro global de excepciones por Strategy, throttler global, logger Winston a archivo, endpoint `/health`, y setup de e2e con BD de test.
 
 **Sin lógica de negocio** — el módulo `auth` llega en la propuesta 002 sobre esta base.
 
@@ -745,7 +745,7 @@ async function bootstrap() {
 
   if (!config.get<boolean>('app.isProduction')!) {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('PCalientes API')
+      .setTitle('Depredadog API')
       .setVersion('1.0')
       .addBearerAuth()
       .build();
