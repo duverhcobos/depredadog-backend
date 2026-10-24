@@ -45,7 +45,7 @@ src/
 │   ├── database/
 │   │   ├── database.module.ts
 │   │   ├── migrations/
-│   │   │   ├── 1706140000000-CreateUsersTable.ts   ← stub del template (tabla "users" genérica en inglés)
+│   │   │   ├── 1706140000000-CreateUsersTable.ts   ← ejemplo de naming de migración (tabla "users" genérica en inglés)
 │   │   │   └── 1769319626978-AddPhoneToUsers.ts
 │   │   └── schemas/
 │   │       └── <entidad>.schema.ts        ← TypeORM entities de las tablas reales

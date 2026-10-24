@@ -3,7 +3,7 @@ name: migrations-workflow
 description: Workflow obligatorio de migraciones TypeORM de este backend — cuándo generar vs. escribir a mano, naming, corrida en dev+test, verificación de revert, seeds y RLS
 ---
 
-Workflow de migraciones del backend (`template_nestj`). Aplicar **siempre** que una propuesta cree/altere tablas — la base de datos cambia SOLO vía migraciones, nunca con `synchronize`.
+Workflow de migraciones del backend (`pcalientes_backend`). Aplicar **siempre** que una propuesta cree/altere tablas — la base de datos cambia SOLO vía migraciones, nunca con `synchronize`.
 
 ## Regla madre
 

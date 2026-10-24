@@ -12,7 +12,7 @@ triggers:
   - model
 ---
 
-Flujo de trabajo **obligatorio** para cualquier cambio de código en este backend (`template_nestj`). Invocar este skill siempre que se pida implementar una funcionalidad, agregar un módulo, modificar lógica de negocio, o cualquier cambio que afecte archivos del proyecto.
+Flujo de trabajo **obligatorio** para cualquier cambio de código en este backend (`pcalientes_backend`). Invocar este skill siempre que se pida implementar una funcionalidad, agregar un módulo, modificar lógica de negocio, o cualquier cambio que afecte archivos del proyecto.
 
 ## Regla central
 

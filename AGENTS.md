@@ -1,8 +1,8 @@
-# Instrucciones del Proyecto — Backend NestJS (template)
+# Instrucciones del Proyecto — Backend PCalientes (NestJS)
 
 El detalle de convenciones, arquitectura y workflows de este proyecto vive en skills bajo `.devin/skills/`, no en este archivo — cada skill cubre una sola responsabilidad y se invoca solo cuando es relevante, para no cargar contexto innecesario en cada sesión.
 
-> Este repo es un **template de arranque**: el scaffold `nest new` es mínimo y las skills describen las convenciones a seguir cuando el proyecto crezca (DDD por módulos, TypeORM+Postgres, propuestas antes de código). Al clonarlo para un producto real, adaptar este archivo y las skills que asuman dominio (nombres de ejemplo, secciones multi-tenant si no aplica).
+> Estado actual: el scaffold `nest new` es mínimo (`src/` solo trae los archivos default) y las skills describen las convenciones a seguir cuando el proyecto crezca (DDD por módulos, TypeORM+Postgres, propuestas antes de código). Las skills que asuman dominio (ejemplos multi-tenant, RLS) se ajustan a medida que el dominio de PCalientes se defina.
 
 ## Reglas mínimas siempre vigentes
 

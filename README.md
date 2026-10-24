@@ -1,6 +1,6 @@
-# template_nestj
+# pcalientes_backend
 
-Template de arranque para backend **NestJS + TypeORM + PostgreSQL** con convenciones DDD, workflow de propuestas y subagentes de desarrollo.
+Backend de **PCalientes** — **NestJS + TypeORM + PostgreSQL** con convenciones DDD, workflow de propuestas y subagentes de desarrollo.
 
 ## Qué incluye
 
@@ -10,11 +10,11 @@ Template de arranque para backend **NestJS + TypeORM + PostgreSQL** con convenci
 - `AGENTS.md` — reglas vigentes e índice de skills.
 - Carpetas de workflow: `propuestas/`, `pendientes/`, `planeaciones/`, `documentacion/api/`.
 
-## Cómo usarlo
+## Setup
 
-1. Copiar la carpeta al nombre del producto nuevo.
-2. `npm install` → `npm run start:dev`.
-3. Actualizar `package.json` (`name`), `.env` (copiar de `.env.example`), y las skills que mencionen el nombre del proyecto.
+1. `npm install`.
+2. Copiar `.env.example` → `.env` y completar credenciales de Postgres.
+3. `npm run start:dev`.
 4. Cuando nazca el dominio, crear el documento del modelo en `documentacion/` y la primera propuesta en `propuestas/001-*.md`.
 
 ## Comandos
@@ -25,3 +25,7 @@ Template de arranque para backend **NestJS + TypeORM + PostgreSQL** con convenci
 | `npm run build` / `npx tsc --noEmit` | Compilar / typecheck |
 | `npm run test` / `npm run test:e2e` | Unitarios Jest / e2e (ver skill `e2e-test-setup`) |
 | `npm run lint` | ESLint |
+
+## App hermana
+
+`../pcalientes_app` — app móvil Flutter (Clean Architecture + BLoC), único cliente esperado de este backend. Comparte el workflow de skills/propuestas y las carpetas `pendientes/` y `planeaciones/` viven acá.

@@ -3,7 +3,7 @@ name: env-secrets
 description: Manejo de variables de entorno y secretos de este backend — inventario, archivos .env/.env.test/.env.example, cómo agregar una variable nueva, higiene de secretos
 ---
 
-Variables de entorno y secretos del backend (`template_nestj`).
+Variables de entorno y secretos del backend (`pcalientes_backend`).
 Invocar **siempre** que se agregue una config nueva, se toquen URLs,
 credenciales, tokens o puertos.
 

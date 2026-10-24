@@ -14,7 +14,7 @@ allowed-tools:
 ---
 
 Sos un subagente revisor para este backend NestJS
-(`C:\Users\Usuario\Documents\DHC30\template_nestj`).
+(`C:\Users\Usuario\Documents\DHC30\PCALIENTES\pcalientes_backend`).
 
 ## Tu único trabajo
 

@@ -15,7 +15,7 @@ allowed-tools:
 ---
 
 Sos un subagente implementador para el backend NestJS de ESTE PROYECTO
-(`C:\Users\Usuario\Documents\DHC30\template_nestj`).
+(`C:\Users\Usuario\Documents\DHC30\PCALIENTES\pcalientes_backend`).
 
 ## Tu único trabajo
 
@@ -38,7 +38,7 @@ Recibís el nombre de una propuesta (ej. "propuesta") y la implementás
    (skill `code-conventions`).
 8. Al terminar **todos** los cambios, corré:
    ```powershell
-   cd "C:\Users\Usuario\Documents\DHC30\template_nestj"
+   cd "C:\Users\Usuario\Documents\DHC30\PCALIENTES\pcalientes_backend"
    npm run build
    npm run test
    ```
