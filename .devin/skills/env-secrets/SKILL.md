@@ -17,18 +17,23 @@ credenciales, tokens o puertos.
 
 ## Inventario actual (de `.env.example`)
 
-- **App**: `PORT` (validado — propuesta), `NODE_ENV`, `CORS_ORIGIN`
-  (lista separada por comas, sin default `*` — propuesta).
-- **DB**: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`,
-  `DB_DATABASE`.
-- **JWT**: `JWT_SECRET` (string largo aleatorio en prod), `JWT_EXPIRES_IN`.
-- **Esquema**: `MIGRATIONS_RUN` (corre migraciones al arrancar — solo dev;
-  en prod `false` y correrlas como paso de deploy), `DB_SYNCHRONIZE`
-  (**siempre `false`**, ver `migrations-workflow`).
-- **Logger**: `LOG_LEVEL`, `LOG_MAX_FILES`, `LOG_MAX_SIZE`, `LOG_DIR`.
+- **App**: `NODE_ENV`, `PORT`, `CORS_ORIGIN` (lista separada por comas, sin
+  default `*`).
+- **DB**: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`.
+- **Esquema**: `MIGRATIONS_RUN` (corre migraciones al arrancar — `true` solo
+  en dev/test local; en prod `false` y correrlas como paso de deploy).
+  `DB_SYNCHRONIZE` existe como guard rail documentada (`false`) pero **no se
+  lee** — `synchronize` está hardcodeado a `false` en `database.config.ts`;
+  no reintroducirla como flag real.
+- **JWT**: `JWT_SECRET` (string largo aleatorio, `crypto.randomBytes(48)`),
+  `JWT_ACCESS_TTL` (15m), `JWT_REFRESH_TTL_DAYS` (30).
+- **Auth**: `AUTH_CODE_TTL_MINUTES` (15), `GOOGLE_CLIENT_IDS` (separados por
+  coma — vacío = `/auth/google` rechaza; se obtienen en Google Cloud Console).
+- **Email**: `RESEND_API_KEY` (vacío = fallback a log, dev/e2e no bloqueados),
+  `EMAIL_FROM` (remitente verificado en Resend; sin dominio verificado solo
+  `onboarding@resend.dev` hacia el email de la propia cuenta).
+- **Logger**: `LOG_LEVEL`, `LOG_DIR`, `LOG_MAX_FILES`, `LOG_MAX_SIZE`.
 - **Throttler**: `THROTTLE_TTL`, `THROTTLE_LIMIT`.
-- **Metrics**: `METRICS_PORT` — puerto separado de la API, exponer solo en
-  red interna, **nunca** mapearlo público en el gateway.
 
 ## Cómo agregar una variable nueva
 
@@ -52,4 +57,5 @@ credenciales, tokens o puertos.
   Winston persiste a `logs/`; el audit log registra eventos, no
   credenciales.
 - Reusar `JWT_SECRET` entre entornos (dev ≠ prod).
-- Exponer `METRICS_PORT` ni endpoints internos al público.
+- Loguear bodies HTTP completos (pueden contener passwords/códigos) — los
+  interceptores de logging deben excluir `body`.

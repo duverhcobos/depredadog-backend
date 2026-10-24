@@ -10,16 +10,16 @@ triggers:
   - model
 ---
 
-Referencia del stack tecnológico del backend **NestJS** de Depredadog (scaffold `nest new` + dependencias base ya instaladas), confirmada contra `package.json`. Usar esta información como base antes de sugerir librerías, comandos o patrones — nunca asumir un stack distinto al descrito acá.
+Referencia del stack tecnológico del backend **NestJS** de Depredadog, confirmada contra `package.json` y el código real. Usar esta información como base antes de sugerir librerías, comandos o patrones — nunca asumir un stack distinto al descrito acá.
 
-- **Framework**: NestJS 11 (`nest new`, modo `--strict`). La app arranca mínima (`src/app.module.ts`, `src/main.ts`); la estructura DDD por módulos (`src/modules/<modulo>/`, `src/common/`, `src/infrastructure/`) se crea siguiendo la skill `module-structure` a medida que aparecen los primeros endpoints.
-- **Base de datos**: PostgreSQL + TypeORM 0.3 (`@nestjs/typeorm`, `typeorm`, `pg` instalados). `synchronize` debe quedar atado a desarrollo; en producción `false` y las migraciones son obligatorias — ver skill `migrations-workflow`.
-- **Package manager**: npm — **nunca** pnpm ni yarn (solo existe `package-lock.json`). Todo comando de instalación/scripts debe usar `npm`.
-- **Validación**: `class-validator` + `class-transformer` (pipe global en `main.ts` cuando se agreguen endpoints — ver skill `new-endpoint-checklist`).
-- **Docs**: `@nestjs/swagger` 11 para `SwaggerModule` en `main.ts` + decoradores `@Api*` en DTOs.
-- **Rate limiting**: `@nestjs/throttler` — ver el patrón en skill `code-patterns`.
-- **Autenticación**: no implementada todavía. Cuando se agregue, la convención del proyecto es JWT + bcrypt con `jsonwebtoken`/`@nestjs/jwt` + Passport — diseñarlo en su propuesta (ver `code-patterns` para el patrón de JWT payload con contexto de tenant si el producto es multi-tenant).
-- **Tests**: Jest (unitarios en `*.spec.ts` junto al código) + e2e en `test/` — ver skills `unit-test-checklist` y `e2e-test-setup`.
+- **Framework**: NestJS 11, modo `--strict`. Bootstrap completo (propuesta 001): ConfigModule con `env.validation`, ValidationPipe global (`whitelist` + `forbidNonWhitelisted`), filtros globales de excepciones (strategy pattern), logger Winston a `logs/`, throttler global con `/health` exenta, `enableShutdownHooks`, Swagger en no-prod.
+- **Base de datos**: PostgreSQL + TypeORM 0.3 (`@nestjs/typeorm`, `typeorm`, `pg`). `synchronize` **hardcodeado `false`** (`database.config.ts`/`database.module.ts`) — el esquema cambia SOLO por migraciones (`MIGRATIONS_RUN` las corre al arrancar en dev/test). La variable `DB_SYNCHRONIZE` existe en los `.env` como guard rail documentada pero **no se lee** — no reintroducirla como flag real.
+- **Package manager**: npm — **nunca** pnpm ni yarn (solo existe `package-lock.json`).
+- **Validación**: `class-validator` + `class-transformer` (pipe global activo). `env.validation.ts` valida las env vars al arrancar.
+- **Docs**: `@nestjs/swagger` 11 — `SwaggerModule` en `main.ts` (title "Depredadog API", bearer auth) solo fuera de prod + decoradores `@Api*` en DTOs.
+- **Rate limiting**: `@nestjs/throttler` global (100/min default; auth tiene límites estrictos por ruta) — ver `code-patterns`.
+- **Autenticación**: **implementada** (módulo `auth`, propuestas 002+003) — JWT access 15min + refresh 30días con rotación (`@nestjs/jwt`/`@nestjs/passport` majors **11** — los 12 son ESM-only y rompen Jest), bcrypt, verificación por código de 6 dígitos, forgot/reset password, Google Sign-In por `idToken` (`google-auth-library`), email real vía Resend (`fetch` nativo, fallback a log sin `RESEND_API_KEY`). Single-tenant (sin contexto de tenant en el payload).
+- **Tests**: Jest (unitarios `*.spec.ts` junto al código — 93 tests) + e2e Supertest en `test/` (47 tests, BD `pcalientes_db_test` separada) — ver skills `unit-test-checklist` y `e2e-test-setup`.
 - **OS de desarrollo**: Windows / PowerShell — los comandos de ejemplo y scripts deben ser compatibles con PowerShell, no asumir sintaxis de bash.
 
-> Estado actual del repo: el scaffold es mínimo — las skills describen las convenciones a seguir cuando el proyecto crezca, no necesariamente lo que ya existe en `src/`.
+> Estado actual del repo: bootstrap + módulo `auth` completos (10 endpoints, 5 tablas migradas). Cliente: la app Flutter `../depredadog_app` (carpeta pendiente de renombrar desde `pcalientes_app`).

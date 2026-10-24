@@ -36,9 +36,10 @@ src/
 │       └── logger.service.ts
 ├── config/
 │   ├── app.config.ts
+│   ├── auth.config.ts                  ← JWT TTLs, code TTL, Google client IDs
 │   ├── database.config.ts
+│   ├── email.config.ts                 ← Resend: apiKey, from
 │   ├── env.validation.ts
-│   ├── jwt.config.ts
 │   ├── logger.config.ts
 │   └── throttle.config.ts
 ├── infrastructure/
@@ -75,6 +76,8 @@ Cada módulo bajo `src/modules/<nombre>/` sigue esta estructura completa:
 │   │   └── <excepcion>.exception.ts       ← extends DomainException (ver skill code-patterns)
 │   ├── repositories/
 │   │   └── <entidad>.repository.interface.ts  ← Interface + Symbol TOKEN
+│   ├── services/
+│   │   └── <servicio>.interface.ts      ← Port de servicio externo (hasher, email, etc.) — interface + Symbol TOKEN; el impl vive en infrastructure/services/
 │   └── value-objects/
 │       └── <vo>.vo.ts
 │

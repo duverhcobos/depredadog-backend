@@ -1,6 +1,6 @@
 ---
 name: code-patterns
-description: Patrones de código recurrentes de este backend NestJS — excepciones de dominio, repositorio interface+token, JWT payload con contexto, guard público, throttling, graceful shutdown de recursos externos
+description: Patrones de código recurrentes de este backend NestJS — excepciones de dominio, repositorio interface+token, puertos de servicio en domain, consumo atómico de tokens, constraints PG→DomainException, JWT payload, guard público, throttling, graceful shutdown
 allowed-tools:
   - read
   - grep
@@ -36,7 +36,55 @@ export const XXX_REPOSITORY = Symbol('IXxxRepository');
 constructor(@Inject(XXX_REPOSITORY) private readonly repo: IXxxRepository) {}
 ```
 
-### JWT payload con contexto (cuando se implemente auth)
+### Puertos de servicio en domain (servicios externos)
+
+```typescript
+// Servicios técnicos que el use-case necesita (hash, email, generador de
+// códigos, verificador de tokens externos) siguen el MISMO patrón que los
+// repositorios: interface + Symbol token en domain/services/, impl en
+// infrastructure/services/. application/ nunca importa la clase concreta
+// de infra — el swap de proveedor (Resend→SES, bcrypt→argon2) queda en un
+// binding del módulo.
+// Ejemplos reales en auth: IPasswordHasher, ICodeGenerator, IEmailSender,
+// IGoogleTokenVerifier.
+export interface IXxxService { ... }
+export const XXX_SERVICE = Symbol('IXxxService');
+{ provide: XXX_SERVICE, useClass: XxxServiceImpl }
+```
+
+### Consumo/revocación atómica (tokens de un solo uso)
+
+```typescript
+// NUNCA read-check-write para consumir/revocar un token: dos requests
+// concurrentes pasarían el check leyendo el mismo estado. UPDATE condicional
+// y verificar affected:
+const result = await repo.update(
+  { id: token.id, consumedAt: IsNull() },
+  { consumedAt: new Date() },
+);
+// affected === 0 → otro request ya lo consumió → tratar como REUSO
+// (en auth: CompromisedSessionException + revokeAllForUser del dueño).
+// Las interfaces devuelven Promise<boolean> (filas afectadas), no void.
+```
+
+### Constraints de PostgreSQL → DomainException
+
+```typescript
+// Los unique constraints pueden violarse en carrera aunque el use-case
+// chequeó antes (register duplicado, link concurrente de Google). Mapear el
+// QueryFailedError 23505 en el repositorio a la DomainException del caso —
+// nunca dejar que llegue cruda como 500:
+try { await this.orm.save(schema); }
+catch (e) {
+  if (e instanceof QueryFailedError &&
+      (e.driverError as { constraint?: string }).constraint === 'uq_xxx') {
+    throw new XxxAlreadyExistsException();
+  }
+  throw e;
+}
+```
+
+### JWT payload con contexto (implementado en módulo auth — single-tenant hoy)
 
 ```typescript
 // jwt.strategy.ts — JwtPayload mínimo: { sub, sid, email }.

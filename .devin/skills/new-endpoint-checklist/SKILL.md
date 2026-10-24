@@ -65,7 +65,7 @@ El orden de creación **no sigue las capas de DDD** (domain → application → 
 ### 9. Infraestructura — implementa lo que el dominio dejó como interfaz
 - [ ] `infrastructure/repositories/<entidad>.repository.ts` *(implements IXxxRepository)*
 - [ ] `infrastructure/mappers/<entidad>.mapper.ts` *(domain ↔ schema, si el repositorio lo necesita)*
-- [ ] `infrastructure/services/<servicio>.service.ts` *(si el use-case depende de un servicio externo nuevo: bcrypt, email, etc.)*
+- [ ] `infrastructure/services/<servicio>.service.ts` *(si el use-case depende de un servicio externo nuevo: bcrypt, email, etc. — con su interface + token en `domain/services/`; `application` nunca inyecta la clase concreta de infra)*
 
 ### 10. Mapper de aplicación — obligatorio si el use-case retorna una entidad de dominio y la respuesta es un DTO
 - [ ] `application/mappers/<entidad>.mapper.ts` *(domain entity → response DTO; ver skill `strict-layering-rule`: el use-case nunca construye el DTO directamente)*
