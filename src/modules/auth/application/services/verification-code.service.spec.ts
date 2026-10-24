@@ -83,6 +83,20 @@ describe('VerificationCodeService', () => {
     );
   });
 
+  it('issuePasswordReset consume previos del tipo y envía por el canal de reset', async () => {
+    const user = Object.assign(new User(), { id: 'u1', email: 'a@b.com' });
+    await service.issuePasswordReset(user);
+
+    expect(authTokens.consumePendingForUser).toHaveBeenCalledWith(
+      'u1',
+      AuthTokenType.PASSWORD_RESET,
+    );
+    expect(emailSender.sendPasswordResetCode).toHaveBeenCalledWith(
+      'a@b.com',
+      '654321',
+    );
+  });
+
   it('traga el fallo del envío (token persistido, anti-enumeración)', async () => {
     emailSender.sendVerificationCode.mockRejectedValue(
       new Error('Email delivery failed: 403'),

@@ -10,15 +10,11 @@ import {
   DEVICE_REPOSITORY,
   type IDeviceRepository,
 } from '../../domain/repositories/device.repository.interface';
-import { ReferralCodeGenerationException } from '../../domain/exceptions/referral-code-generation.exception';
-import {
-  CODE_GENERATOR,
-  type ICodeGenerator,
-} from '../../domain/services/code-generator.interface';
 import {
   type IPasswordHasher,
   PASSWORD_HASHER,
 } from '../../domain/services/password-hasher.interface';
+import { ReferralCodeService } from '../services/referral-code.service';
 import { VerificationCodeService } from '../services/verification-code.service';
 
 export interface RegisterCommand {
@@ -41,9 +37,8 @@ export class RegisterUseCase {
     @Inject(DEVICE_REPOSITORY) private readonly devices: IDeviceRepository,
     @Inject(PASSWORD_HASHER)
     private readonly passwordHasher: IPasswordHasher,
-    @Inject(CODE_GENERATOR)
-    private readonly codeGenerator: ICodeGenerator,
     private readonly verificationCode: VerificationCodeService,
+    private readonly referralCodes: ReferralCodeService,
   ) {}
 
   async execute(cmd: RegisterCommand): Promise<User> {
@@ -70,7 +65,7 @@ export class RegisterUseCase {
     user.referredBy = referredBy;
     user.marketingOptIn = cmd.marketingOptIn ?? false;
     user.registeredIp = cmd.registeredIp;
-    user.referralCode = await this.generateUniqueReferralCode();
+    user.referralCode = await this.referralCodes.generate();
     const saved = await this.users.save(user);
 
     if (cmd.deviceFingerprint) {
@@ -82,13 +77,5 @@ export class RegisterUseCase {
     }
     await this.verificationCode.issue(saved);
     return saved;
-  }
-
-  private async generateUniqueReferralCode(): Promise<string> {
-    for (let i = 0; i < 5; i++) {
-      const code = this.codeGenerator.generateReferralCode();
-      if (!(await this.users.findByReferralCode(code))) return code;
-    }
-    throw new ReferralCodeGenerationException();
   }
 }

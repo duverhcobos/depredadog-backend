@@ -11,6 +11,9 @@ import { VerifyEmailDto } from '../../application/dtos/verify-email.dto';
 import { ResendVerificationDto } from '../../application/dtos/resend-verification.dto';
 import { LoginDto } from '../../application/dtos/login.dto';
 import { RefreshTokenDto } from '../../application/dtos/refresh-token.dto';
+import { ForgotPasswordDto } from '../../application/dtos/forgot-password.dto';
+import { ResetPasswordDto } from '../../application/dtos/reset-password.dto';
+import { GoogleLoginDto } from '../../application/dtos/google-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -54,6 +57,30 @@ export class AuthController {
   @HttpCode(200)
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(200)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('reset-password')
+  @HttpCode(200)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('google')
+  @HttpCode(200)
+  google(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto);
   }
 
   @Post('logout')

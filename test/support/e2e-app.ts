@@ -6,12 +6,22 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { EmailSenderService } from '../../src/modules/auth/infrastructure/services/email-sender.service';
+import { GoogleTokenVerifierService } from '../../src/modules/auth/infrastructure/services/google-token-verifier.service';
+import { GoogleProfile } from '../../src/modules/auth/domain/services/google-token-verifier.interface';
+import { InvalidGoogleTokenException } from '../../src/modules/auth/domain/exceptions/invalid-google-token.exception';
 
 let throttlerGuardSpy: jest.SpyInstance;
 
 export type SentEmailKind = 'verification' | 'password_reset';
 
 const sentEmails: { kind: SentEmailKind; email: string; code: string }[] = [];
+
+let googleProfile: GoogleProfile | null = null;
+
+/** Configura lo que el spy de Google devuelve en el siguiente /auth/google */
+export function mockGoogleProfile(profile: GoogleProfile | null): void {
+  googleProfile = profile;
+}
 
 export async function createE2EApp(): Promise<INestApplication> {
   jest.restoreAllMocks();
@@ -29,6 +39,14 @@ export async function createE2EApp(): Promise<INestApplication> {
     .mockImplementation((email: string, code: string) => {
       sentEmails.push({ kind: 'password_reset', email, code });
       return Promise.resolve();
+    });
+  jest
+    .spyOn(GoogleTokenVerifierService.prototype, 'verify')
+    .mockImplementation(() => {
+      if (!googleProfile) {
+        return Promise.reject(new InvalidGoogleTokenException());
+      }
+      return Promise.resolve(googleProfile);
     });
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -71,6 +89,7 @@ export async function cleanAuthTables(app: INestApplication): Promise<void> {
     'TRUNCATE refresh_tokens, auth_tokens, devices, addresses, users RESTART IDENTITY CASCADE',
   );
   sentEmails.length = 0;
+  googleProfile = null;
 }
 
 export interface RegisterBody {

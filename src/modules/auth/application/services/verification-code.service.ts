@@ -30,28 +30,48 @@ export class VerificationCodeService {
     private readonly logger: LoggerService,
   ) {}
 
-  async issue(user: User): Promise<void> {
+  issue(user: User): Promise<void> {
+    return this.issueToken(
+      user,
+      AuthTokenType.EMAIL_VERIFICATION,
+      (code) => this.emailSender.sendVerificationCode(user.email, code),
+      'verification',
+    );
+  }
+
+  issuePasswordReset(user: User): Promise<void> {
+    return this.issueToken(
+      user,
+      AuthTokenType.PASSWORD_RESET,
+      (code) => this.emailSender.sendPasswordResetCode(user.email, code),
+      'password reset',
+    );
+  }
+
+  private async issueToken(
+    user: User,
+    type: AuthTokenType,
+    send: (code: string) => Promise<void>,
+    kind: string,
+  ): Promise<void> {
     const code = this.codeGenerator.generateVerificationCode();
     const token = new AuthToken();
     token.userId = user.id;
-    token.type = AuthTokenType.EMAIL_VERIFICATION;
+    token.type = type;
     token.tokenHash = this.codeGenerator.hashToken(code);
     token.expiresAt = new Date(
       Date.now() + this.config.get<number>('auth.codeTtlMinutes')! * 60_000,
     );
-    await this.authTokens.consumePendingForUser(
-      user.id,
-      AuthTokenType.EMAIL_VERIFICATION,
-    );
+    await this.authTokens.consumePendingForUser(user.id, type);
     await this.authTokens.save(token);
     // El envío es best-effort: el token queda persistido y el usuario puede
-    // re-pedir el código por resend — no propagamos el fallo (además un 500
-    // aquí revelaría que el email existe, rompiendo la anti-enumeración)
+    // re-pedir el código — no propagamos el fallo (además un 500 aquí
+    // revelaría que el email existe, rompiendo la anti-enumeración)
     try {
-      await this.emailSender.sendVerificationCode(user.email, code);
+      await send(code);
     } catch (error) {
       this.logger.error(
-        `Failed to send verification code to ${user.email}: ${(error as Error).message}`,
+        `Failed to send ${kind} code to ${user.email}: ${(error as Error).message}`,
         undefined,
         'VerificationCodeService',
       );

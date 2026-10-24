@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, QueryFailedError, Repository } from 'typeorm';
 import { User } from '../../domain/entities/user.entity';
 import { EmailAlreadyRegisteredException } from '../../domain/exceptions/email-already-registered.exception';
+import { GoogleAccountAlreadyLinkedException } from '../../domain/exceptions/google-account-already-linked.exception';
 import { IUserRepository } from '../../domain/repositories/user.repository.interface';
 
 interface PgDriverError {
@@ -42,11 +43,13 @@ export class UserRepository implements IUserRepository {
         error instanceof QueryFailedError
           ? (error as { driverError: PgDriverError }).driverError
           : undefined;
-      if (
-        driverError?.code === '23505' &&
-        driverError.constraint === 'uq_users_email'
-      ) {
-        throw new EmailAlreadyRegisteredException();
+      if (driverError?.code === '23505') {
+        if (driverError.constraint === 'uq_users_email') {
+          throw new EmailAlreadyRegisteredException();
+        }
+        if (driverError.constraint === 'uq_users_google_id') {
+          throw new GoogleAccountAlreadyLinkedException();
+        }
       }
       throw error;
     }

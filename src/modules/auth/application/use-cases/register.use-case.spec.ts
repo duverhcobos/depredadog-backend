@@ -12,13 +12,10 @@ import {
   USER_REPOSITORY,
 } from '../../domain/repositories/user.repository.interface';
 import {
-  CODE_GENERATOR,
-  ICodeGenerator,
-} from '../../domain/services/code-generator.interface';
-import {
   IPasswordHasher,
   PASSWORD_HASHER,
 } from '../../domain/services/password-hasher.interface';
+import { ReferralCodeService } from '../services/referral-code.service';
 import { VerificationCodeService } from '../services/verification-code.service';
 import { RegisterCommand, RegisterUseCase } from './register.use-case';
 
@@ -27,8 +24,8 @@ describe('RegisterUseCase', () => {
   let users: jest.Mocked<IUserRepository>;
   let devices: jest.Mocked<IDeviceRepository>;
   let hasher: jest.Mocked<IPasswordHasher>;
-  let codeGen: jest.Mocked<ICodeGenerator>;
   let verificationCode: jest.Mocked<VerificationCodeService>;
+  let referralCodes: jest.Mocked<ReferralCodeService>;
 
   const command: RegisterCommand = {
     email: 'New@Test.com ',
@@ -47,16 +44,15 @@ describe('RegisterUseCase', () => {
     };
     devices = { findByUserAndFingerprint: jest.fn(), touch: jest.fn() };
     hasher = { hash: jest.fn(), verify: jest.fn() };
-    codeGen = {
-      generateVerificationCode: jest.fn(),
-      generateSessionToken: jest.fn(),
-      generateReferralCode: jest.fn(),
-      hashToken: jest.fn(),
-    };
-    verificationCode = { issue: jest.fn() };
+    verificationCode = {
+      issue: jest.fn(),
+      issuePasswordReset: jest.fn(),
+    } as unknown as jest.Mocked<VerificationCodeService>;
+    referralCodes = {
+      generate: jest.fn().mockResolvedValue('ABCD2345'),
+    } as unknown as jest.Mocked<ReferralCodeService>;
 
     hasher.hash.mockResolvedValue('bcrypt-hash');
-    codeGen.generateReferralCode.mockReturnValue('ABCD2345');
     users.save.mockImplementation((u: User) => {
       u.id = 'user-1';
       return Promise.resolve(u);
@@ -68,8 +64,8 @@ describe('RegisterUseCase', () => {
         { provide: USER_REPOSITORY, useValue: users },
         { provide: DEVICE_REPOSITORY, useValue: devices },
         { provide: PASSWORD_HASHER, useValue: hasher },
-        { provide: CODE_GENERATOR, useValue: codeGen },
         { provide: VerificationCodeService, useValue: verificationCode },
+        { provide: ReferralCodeService, useValue: referralCodes },
       ],
     }).compile();
     useCase = module.get(RegisterUseCase);
@@ -113,9 +109,7 @@ describe('RegisterUseCase', () => {
     users.findByEmail.mockResolvedValue(null);
     const referrer = new User();
     referrer.id = 'referrer-1';
-    users.findByReferralCode
-      .mockResolvedValueOnce(referrer) // lookup del código recibido
-      .mockResolvedValue(null); // el código propio generado queda libre
+    users.findByReferralCode.mockResolvedValue(referrer); // código recibido válido
 
     const user = await useCase.execute({
       ...command,
@@ -124,19 +118,6 @@ describe('RegisterUseCase', () => {
 
     expect(users.findByReferralCode).toHaveBeenCalledWith('ABCD2345');
     expect(user.referredBy).toBe('referrer-1');
-  });
-
-  it('regenera referral_code si el primero está ocupado', async () => {
-    users.findByEmail.mockResolvedValue(null);
-    codeGen.generateReferralCode
-      .mockReturnValueOnce('TAKEN001')
-      .mockReturnValueOnce('FREE0002');
-    users.findByReferralCode
-      .mockResolvedValueOnce(new User()) // TAKEN001 ocupado
-      .mockResolvedValueOnce(null); // FREE0002 libre
-
-    const user = await useCase.execute(command);
-    expect(user.referralCode).toBe('FREE0002');
   });
 
   it('hace touch del device cuando llega fingerprint', async () => {

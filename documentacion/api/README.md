@@ -1,4 +1,4 @@
-# API — PCalientes
+# API — Depredadog
 
 Contrato para consumidores de la API (app Flutter y futuros integradores).
 
@@ -15,7 +15,7 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 - **Verificación de email obligatoria**: `register` no devuelve sesión; el
   código de 6 dígitos enviado por email se canjea en `verify-email`, que sí
   devuelve los tokens.
-- **Device fingerprint** (opcional en register/verify/login): identificador
+- **Device fingerprint** (opcional en register/verify/login/reset-password/google): identificador
   estable del dispositivo (`ANDROID_ID` en Android; UUID en Keychain en iOS).
   Se usa para anti-fraude de promociones.
 
@@ -30,3 +30,6 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 | POST | `/auth/refresh` | [005](auth/005-post-refresh.md) | 🔶 backend listo — sin integrar |
 | POST | `/auth/logout` | [006](auth/006-post-logout.md) | 🔶 backend listo — sin integrar |
 | GET | `/auth/me` | [007](auth/007-get-me.md) | 🔶 backend listo — sin integrar |
+| POST | `/auth/forgot-password` | [008](auth/008-post-forgot-password.md) | 🔶 backend listo — sin integrar |
+| POST | `/auth/reset-password` | [009](auth/009-post-reset-password.md) | 🔶 backend listo — sin integrar |
+| POST | `/auth/google` | [010](auth/010-post-google.md) | 🔶 backend listo — sin integrar |

@@ -21,7 +21,10 @@ describe('ResendVerificationUseCase', () => {
       findByReferralCode: jest.fn(),
       save: jest.fn(),
     };
-    verificationCode = { issue: jest.fn() };
+    verificationCode = {
+      issue: jest.fn(),
+      issuePasswordReset: jest.fn(),
+    } as unknown as jest.Mocked<VerificationCodeService>;
 
     const module = await Test.createTestingModule({
       providers: [
