@@ -6,3 +6,4 @@
 |---|------|--------|---------|
 | 001 | [Migrar la base de datos a Supabase](001-migrar-a-supabase.md) | 🔴 PENDIENTE | bloqueante |
 | 002 | [Envío real de emails](002-envio-email-real.md) | 🔴 PENDIENTE | bloqueante |
+| 003 | [Crashlytics / logger de producción en la app](003-crashlytics-app.md) | 🔴 PENDIENTE | bloqueante |
