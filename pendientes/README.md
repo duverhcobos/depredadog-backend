@@ -8,3 +8,5 @@
 |---|------|--------|---------|
 | 001 | [Migrar la base de datos a Supabase](001-migrar-a-supabase.md) | 🔴 PENDIENTE | bloqueante |
 | 002 | [Envío real de emails](002-envio-email-real.md) | 🔴 PENDIENTE | bloqueante |
+| 003 | [Hosting, dominio y deploy a producción](003-hosting-deploy.md) | 🔴 PENDIENTE | bloqueante |
+| 004 | [Seguridad HTTP: helmet, throttle prod, CORS](004-seguridad-headers-throttle.md) | 🔴 PENDIENTE | recomendado fuerte |
