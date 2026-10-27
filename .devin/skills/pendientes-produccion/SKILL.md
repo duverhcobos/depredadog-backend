@@ -13,7 +13,7 @@ triggers:
 
 # Pendientes pre-producción en `pendientes/`
 
-`pendientes/` (raíz del repo, **compartida entre backend y frontend** — igual que `planeaciones/`) guarda ítems accionables que hoy funcionan como workaround de dev/MVP pero deben resolverse — o aceptarse explícitamente — antes de desplegar a producción.
+`pendientes/` (raíz de **este** repo) guarda ítems accionables que hoy funcionan como workaround de dev/MVP pero deben resolverse — o aceptarse explícitamente — antes de desplegar a producción. **Convención: cada repo tiene su propia `pendientes/`** — los ítems del lado app viven en `../pcalientes_app/pendientes/` (diferente de `planeaciones/`, que sigue compartida acá).
 
 ## Qué SÍ va en `pendientes/`
 

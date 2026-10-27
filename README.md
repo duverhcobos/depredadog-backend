@@ -28,4 +28,4 @@ Backend de **Depredadog** — **NestJS + TypeORM + PostgreSQL** con convenciones
 
 ## App hermana
 
-`../depredadog_app` — app móvil Flutter (Clean Architecture + BLoC), único cliente esperado de este backend. Comparte el workflow de skills/propuestas y las carpetas `pendientes/` y `planeaciones/` viven acá.
+`../depredadog_app` — app móvil Flutter (Clean Architecture + BLoC), único cliente esperado de este backend. Comparte el workflow de skills/propuestas. `planeaciones/` es compartida y vive acá; `pendientes/` es propia de cada repo (los ítems de la app van en `../pcalientes_app/pendientes/`).

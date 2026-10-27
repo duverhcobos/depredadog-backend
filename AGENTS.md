@@ -31,7 +31,7 @@ El detalle de convenciones, arquitectura y workflows de este proyecto vive en sk
 | `api-docs` | Al implementar/alterar un endpoint — crear o actualizar su doc en `documentacion/api/` en el mismo commit (contrato para consumidores: request/responses/errores con JSON real) |
 | `env-secrets` | Al agregar una config nueva o tocar URLs, credenciales, tokens o puertos — archivos `.env`/`.env.test`/`.env.example`, cómo agregar una variable, higiene de secretos |
 | `propuesta-workflow` | **Siempre** que se vaya a proponer un cambio de código — formato y reglas del archivo en `propuestas/` |
-| `pendientes-produccion` | Al crear/consultar ítems pendientes antes del deploy a producción — carpeta `pendientes/` compartida, formato, estados y criterio de cierre |
+| `pendientes-produccion` | Al crear/consultar ítems pendientes antes del deploy a producción — carpeta `pendientes/` propia del repo (los de la app van en la suya), formato, estados y criterio de cierre |
 | `planeacion-workflow` | Al crear o actualizar un documento en `planeaciones/` — convención de "Estado" (en definición / decidido / implementado / pendiente externo / descartado) |
 | `idor-checklist` | Al diseñar/revisar un endpoint que recibe un identificador de recurso |
 | `rls-tenant-isolation` | Al crear una tabla de negocio o migración en proyecto multi-tenant — Row Level Security de PostgreSQL como segunda capa de aislamiento |
