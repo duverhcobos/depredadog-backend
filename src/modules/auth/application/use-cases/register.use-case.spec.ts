@@ -31,6 +31,9 @@ describe('RegisterUseCase', () => {
     email: 'New@Test.com ',
     password: 'Password1!',
     firstName: ' Nuevo ',
+    secondName: ' Carlos ',
+    firstLastName: ' Pérez ',
+    secondLastName: 'García',
     registeredIp: '1.2.3.4',
   };
 
@@ -80,6 +83,9 @@ describe('RegisterUseCase', () => {
     expect(users.findByEmail).toHaveBeenCalledWith('new@test.com');
     expect(user.email).toBe('new@test.com');
     expect(user.firstName).toBe('Nuevo');
+    expect(user.secondName).toBe('Carlos');
+    expect(user.firstLastName).toBe('Pérez');
+    expect(user.secondLastName).toBe('García');
     expect(user.passwordHash).toBe('bcrypt-hash');
     expect(user.referralCode).toBe('ABCD2345');
     expect(user.registeredIp).toBe('1.2.3.4');

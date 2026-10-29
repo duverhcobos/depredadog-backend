@@ -10,7 +10,9 @@ export class User {
   status: UserStatus = UserStatus.PENDING_VERIFICATION;
   emailVerifiedAt: Date | null = null;
   firstName!: string;
-  lastName: string | null = null;
+  secondName: string | null = null;
+  firstLastName!: string;
+  secondLastName: string | null = null;
   phone: string | null = null;
   registeredIp: string | null = null;
   referralCode!: string;

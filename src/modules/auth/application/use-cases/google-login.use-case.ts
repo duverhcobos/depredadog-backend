@@ -61,7 +61,9 @@ export class GoogleLoginUseCase {
       user.firstName =
         profile.givenName?.trim().slice(0, 100) ||
         email.split('@')[0].slice(0, 100);
-      user.lastName = profile.familyName?.trim().slice(0, 100) || null;
+      // Google doesn't guarantee family_name — '' mirrors the
+      // nulls->'' backfill in the SplitUserNameLatam migration.
+      user.firstLastName = profile.familyName?.trim().slice(0, 100) || '';
       user.status = UserStatus.ACTIVE;
       user.emailVerifiedAt = new Date();
       user.referralCode = await this.referralCodes.generate();

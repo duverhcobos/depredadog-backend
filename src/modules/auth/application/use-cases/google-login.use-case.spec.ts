@@ -74,6 +74,9 @@ describe('GoogleLoginUseCase', () => {
     expect(saved.passwordHash).toBeNull();
     expect(saved.status).toBe(UserStatus.ACTIVE);
     expect(saved.firstName).toBe('Ana');
+    expect(saved.firstLastName).toBe('Pérez');
+    expect(saved.secondName).toBeNull();
+    expect(saved.secondLastName).toBeNull();
     expect(saved.referralCode).toBe('REF12345');
     expect(result.accessToken).toBe('at');
   });
@@ -91,7 +94,18 @@ describe('GoogleLoginUseCase', () => {
 
     const saved = users.save.mock.calls[0][0];
     expect(saved.firstName).toHaveLength(100);
-    expect(saved.lastName).toHaveLength(100);
+    expect(saved.firstLastName).toHaveLength(100);
+  });
+
+  it('sin familyName de Google → firstLastName queda vacío', async () => {
+    verifier.verify.mockResolvedValue({ ...profile, familyName: null });
+    users.findByGoogleId.mockResolvedValue(null);
+    users.findByEmail.mockResolvedValue(null);
+
+    await useCase.execute({ idToken: 'tok' });
+
+    const saved = users.save.mock.calls[0][0];
+    expect(saved.firstLastName).toBe('');
   });
 
   it('encuentra por googleId → login directo sin tocar la fila', async () => {

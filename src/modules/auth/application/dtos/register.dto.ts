@@ -27,7 +27,19 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  lastName?: string;
+  secondName?: string;
+
+  // Primer apellido — ahora OBLIGATORIO (lastName era opcional):
+  // convención LatAm decidida por el usuario.
+  @IsString()
+  @Length(1, 100)
+  @Matches(/\S/)
+  firstLastName!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  secondLastName?: string;
 
   @IsOptional()
   @IsString()

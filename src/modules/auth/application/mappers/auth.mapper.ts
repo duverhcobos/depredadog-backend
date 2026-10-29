@@ -15,7 +15,9 @@ export class AuthMapper {
     dto.id = user.id;
     dto.email = user.email;
     dto.firstName = user.firstName;
-    dto.lastName = user.lastName;
+    dto.secondName = user.secondName;
+    dto.firstLastName = user.firstLastName;
+    dto.secondLastName = user.secondLastName;
     dto.phone = user.phone;
     dto.role = user.role;
     dto.status = user.status;

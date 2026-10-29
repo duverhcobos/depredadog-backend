@@ -40,8 +40,15 @@ export const UserSchema = new EntitySchema<User>({
       nullable: true,
     },
     firstName: { name: 'first_name', type: 'varchar', length: 100 },
-    lastName: {
-      name: 'last_name',
+    secondName: {
+      name: 'second_name',
+      type: 'varchar',
+      length: 100,
+      nullable: true,
+    },
+    firstLastName: { name: 'first_last_name', type: 'varchar', length: 100 },
+    secondLastName: {
+      name: 'second_last_name',
       type: 'varchar',
       length: 100,
       nullable: true,

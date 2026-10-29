@@ -11,6 +11,7 @@ describe('AuthMapper', () => {
     u.id = 'u1';
     u.email = 'a@b.com';
     u.firstName = 'Ana';
+    u.firstLastName = 'López';
     u.role = UserRole.CUSTOMER;
     u.status = UserStatus.ACTIVE;
     u.referralCode = 'ABCD2345';
@@ -22,7 +23,10 @@ describe('AuthMapper', () => {
   it('toUserResponse serializa fechas a ISO y nulos explícitos', () => {
     const dto = mapper.toUserResponse(user());
     expect(dto.createdAt).toBe('2026-01-01T00:00:00.000Z');
-    expect(dto.lastName).toBeNull();
+    expect(dto.firstName).toBe('Ana');
+    expect(dto.secondName).toBeNull();
+    expect(dto.firstLastName).toBe('López');
+    expect(dto.secondLastName).toBeNull();
     expect(dto.phone).toBeNull();
     expect(dto.emailVerifiedAt).toBeNull();
     expect(dto.role).toBe('customer');

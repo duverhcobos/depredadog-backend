@@ -21,7 +21,9 @@ export interface RegisterCommand {
   email: string;
   password: string;
   firstName: string;
-  lastName?: string;
+  secondName?: string;
+  firstLastName: string;
+  secondLastName?: string;
   phone?: string;
   referralCode?: string;
   marketingOptIn?: boolean;
@@ -39,7 +41,7 @@ export class RegisterUseCase {
     private readonly passwordHasher: IPasswordHasher,
     private readonly verificationCode: VerificationCodeService,
     private readonly referralCodes: ReferralCodeService,
-  ) {}
+  ) { }
 
   async execute(cmd: RegisterCommand): Promise<User> {
     const email = cmd.email.trim().toLowerCase();
@@ -60,8 +62,12 @@ export class RegisterUseCase {
     user.email = email;
     user.passwordHash = await this.passwordHasher.hash(cmd.password);
     user.firstName = cmd.firstName.trim();
-    user.lastName = cmd.lastName?.trim() ?? null;
-    user.phone = cmd.phone?.trim() ?? null;
+    // Los opcionales usan || null: '' (string solo-espacios) también debe
+    // persistir NULL, no '' — ?? solo cubre undefined (revisor).
+    user.secondName = cmd.secondName?.trim() || null;
+    user.firstLastName = cmd.firstLastName.trim();
+    user.secondLastName = cmd.secondLastName?.trim() || null;
+    user.phone = cmd.phone?.trim() || null;
     user.referredBy = referredBy;
     user.marketingOptIn = cmd.marketingOptIn ?? false;
     user.registeredIp = cmd.registeredIp;

@@ -37,8 +37,10 @@ Identidad + perfil. Un solo `users` para cliente y admin — dos roles fijos no 
 | `role` | enum `user_role` | NOT NULL, default `customer` | `customer` \| `admin` |
 | `status` | enum `user_status` | NOT NULL, default `pending_verification` | `pending_verification` \| `active` \| `suspended` |
 | `email_verified_at` | timestamptz | NULL | Obligatorio para usar la app |
-| `first_name` | varchar(100) | NOT NULL | |
-| `last_name` | varchar(100) | NULL | |
+| `first_name` | varchar(100) | NOT NULL | Primer nombre |
+| `second_name` | varchar(100) | NULL | Segundo nombre |
+| `first_last_name` | varchar(100) | NOT NULL | Primer apellido |
+| `second_last_name` | varchar(100) | NULL | Segundo apellido |
 | `phone` | varchar(20) | NULL | Contacto para delivery. **Sin verificación OTP** — fricción injustificada para el producto |
 | `registered_ip` | inet | NULL | Señal anti-fraude: velocidad de registros por IP |
 | `referral_code` | varchar(20) UNIQUE | NOT NULL | Código propio para referir — generado al registrar |
@@ -126,6 +128,7 @@ Sesión persistente revocable; rotación por uso.
 - Referidos viven en `users` (`referral_code`, `referred_by`) — la conversión/recompensa se resuelve en `promotions` cuando se modele.
 - Push notifications: `devices.push_token` (rota con FCM/APNs) + `notifications_enabled` para la preferencia del usuario.
 - `marketing_opt_in` parte en `false` — el consentimiento es explícito en el registro.
+- **Nombre en 4 campos** (convención LatAm, propuesta 004): `first_name` + `first_last_name` obligatorios ("Juan Pérez" basta); `second_name` + `second_last_name` opcionales ("Juan Carlos Pérez García"). El segundo apellido no siempre es materno → naming numérico, no paternal/maternal.
 
 ---
 

@@ -19,8 +19,10 @@
 |-------|------|-----------|------------|-------------|
 | `email` | string | sí | `IsEmail` | Único, case-insensitive |
 | `password` | string | sí | `MinLength(8)`, `MaxLength(72)` | Se guarda con bcrypt |
-| `firstName` | string | sí | `Length(1,100)` | |
-| `lastName` | string | no | `MaxLength(100)` | |
+| `firstName` | string | sí | `Length(1,100)` | Primer nombre |
+| `secondName` | string | no | `MaxLength(100)` | Segundo nombre |
+| `firstLastName` | string | sí | `Length(1,100)` | Primer apellido |
+| `secondLastName` | string | no | `MaxLength(100)` | Segundo apellido |
 | `phone` | string | no | `MaxLength(20)` | Contacto para delivery |
 | `referralCode` | string | no | `MaxLength(20)` | Código de otro usuario |
 | `marketingOptIn` | boolean | no | — | Consentimiento de promos (default `false`) |
@@ -32,7 +34,9 @@
   "email": "ana@test.com",
   "password": "Password1!",
   "firstName": "Ana",
-  "lastName": "López",
+  "secondName": "María",
+  "firstLastName": "López",
+  "secondLastName": "García",
   "deviceFingerprint": "a1b2c3d4e5f6",
   "platform": "android"
 }
@@ -46,7 +50,9 @@
   "id": "3f8a0c1e-...",
   "email": "ana@test.com",
   "firstName": "Ana",
-  "lastName": "López",
+  "secondName": "María",
+  "firstLastName": "López",
+  "secondLastName": "García",
   "phone": null,
   "role": "customer",
   "status": "pending_verification",

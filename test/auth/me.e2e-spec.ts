@@ -23,7 +23,7 @@ describe('GET /auth/me (e2e)', () => {
     await registerUser(app, {
       email,
       firstName: 'Ana',
-      lastName: 'López',
+      firstLastName: 'López',
     });
     tokens = await activateAndGetTokens(app, email);
   });
@@ -42,7 +42,9 @@ describe('GET /auth/me (e2e)', () => {
     const body = res.body as Record<string, unknown>;
     expect(body.email).toBe(email);
     expect(body.firstName).toBe('Ana');
-    expect(body.lastName).toBe('López');
+    expect(body.secondName).toBeNull();
+    expect(body.firstLastName).toBe('López');
+    expect(body.secondLastName).toBeNull();
     expect(body.status).toBe('active');
     expect(typeof body.referralCode).toBe('string');
     expect(body.passwordHash).toBeUndefined();

@@ -96,7 +96,9 @@ export interface RegisterBody {
   email: string;
   password: string;
   firstName: string;
-  lastName?: string;
+  secondName?: string;
+  firstLastName: string;
+  secondLastName?: string;
   phone?: string;
   referralCode?: string;
   marketingOptIn?: boolean;
@@ -112,6 +114,7 @@ export async function registerUser(
     email: 'user@test.com',
     password: 'Password1!',
     firstName: 'Test',
+    firstLastName: 'User',
     ...overrides,
   };
   await request(app.getHttpServer() as App)
