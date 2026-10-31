@@ -24,6 +24,7 @@ import { RefreshUseCase } from './application/use-cases/refresh.use-case';
 import { RegisterUseCase } from './application/use-cases/register.use-case';
 import { ResendVerificationUseCase } from './application/use-cases/resend-verification.use-case';
 import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
+import { CheckResetCodeUseCase } from './application/use-cases/check-reset-code.use-case';
 import { VerifyEmailUseCase } from './application/use-cases/verify-email.use-case';
 import { ReferralCodeService } from './application/services/referral-code.service';
 import { AUTH_TOKEN_REPOSITORY } from './domain/repositories/auth-token.repository.interface';
@@ -75,6 +76,7 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     RegisterUseCase,
     ForgotPasswordUseCase,
     ResetPasswordUseCase,
+    CheckResetCodeUseCase,
     GoogleLoginUseCase,
     VerifyEmailUseCase,
     ResendVerificationUseCase,

@@ -9,6 +9,7 @@ import { RefreshUseCase } from '../use-cases/refresh.use-case';
 import { RegisterUseCase } from '../use-cases/register.use-case';
 import { ResendVerificationUseCase } from '../use-cases/resend-verification.use-case';
 import { ResetPasswordUseCase } from '../use-cases/reset-password.use-case';
+import { CheckResetCodeUseCase } from '../use-cases/check-reset-code.use-case';
 import { VerifyEmailUseCase } from '../use-cases/verify-email.use-case';
 import { AuthResponseDto } from '../dtos/auth-response.dto';
 import { ForgotPasswordDto } from '../dtos/forgot-password.dto';
@@ -19,6 +20,7 @@ import { RefreshTokenDto } from '../dtos/refresh-token.dto';
 import { RegisterDto } from '../dtos/register.dto';
 import { ResendVerificationDto } from '../dtos/resend-verification.dto';
 import { ResetPasswordDto } from '../dtos/reset-password.dto';
+import { CheckResetCodeDto } from '../dtos/check-reset-code.dto';
 import { TokensResponseDto } from '../dtos/tokens-response.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { VerifyEmailDto } from '../dtos/verify-email.dto';
@@ -27,6 +29,7 @@ const GENERIC_RESEND_MESSAGE =
   'If that email is registered and unverified, a new code has been sent.';
 const GENERIC_FORGOT_MESSAGE =
   'If that email is registered, a reset code has been sent.';
+const GENERIC_CODE_OK_MESSAGE = 'Reset code is valid.';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +41,7 @@ export class AuthService {
     private readonly refreshUseCase: RefreshUseCase,
     private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
+    private readonly checkResetCodeUseCase: CheckResetCodeUseCase,
     private readonly googleLoginUseCase: GoogleLoginUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly getMeUseCase: GetMeUseCase,
@@ -120,6 +124,16 @@ export class AuthService {
         platform: dto.platform,
       });
     return this.authMapper.toAuthResponse(user, { accessToken, refreshToken });
+  }
+
+  async checkResetCode(dto: CheckResetCodeDto): Promise<MessageResponseDto> {
+    await this.checkResetCodeUseCase.execute({
+      email: dto.email,
+      code: dto.code,
+    });
+    const response = new MessageResponseDto();
+    response.message = GENERIC_CODE_OK_MESSAGE;
+    return response;
   }
 
   async googleLogin(dto: GoogleLoginDto): Promise<AuthResponseDto> {

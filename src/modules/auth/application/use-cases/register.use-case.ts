@@ -41,7 +41,7 @@ export class RegisterUseCase {
     private readonly passwordHasher: IPasswordHasher,
     private readonly verificationCode: VerificationCodeService,
     private readonly referralCodes: ReferralCodeService,
-  ) { }
+  ) {}
 
   async execute(cmd: RegisterCommand): Promise<User> {
     const email = cmd.email.trim().toLowerCase();
