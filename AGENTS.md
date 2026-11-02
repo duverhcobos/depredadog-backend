@@ -37,6 +37,7 @@ El detalle de convenciones, arquitectura y workflows de este proyecto vive en sk
 | `rls-tenant-isolation` | Al crear una tabla de negocio o migración en proyecto multi-tenant — Row Level Security de PostgreSQL como segunda capa de aislamiento |
 | `listados-paginacion-indices` | Al diseñar un endpoint de listado (`GET` que devuelve varias filas) o la migración de una tabla nueva — paginación, índices `(tenant_id, ...)`, anti-N+1 y totales del servidor |
 | `token-saving-tools-policy` | Al explorar el código — cuándo leer directo vs. usar el grafo codebase-memory |
+| `evaluacion-modulo` | **Gate obligatorio al cerrar un módulo** — evaluación 10/10 de producción: rúbrica, gaps por severidad, críticos se resuelven ya y el resto a `pendientes/` |
 
 Si una instrucción parece faltar acá, buscarla primero en `.devin/skills/` antes de asumir que no existe.
 
