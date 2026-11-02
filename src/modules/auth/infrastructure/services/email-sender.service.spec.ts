@@ -26,14 +26,36 @@ describe('EmailSenderService', () => {
     fetchSpy.mockRestore();
   });
 
-  it('sin API key → loguea el código y no llama a la API', async () => {
-    config.get.mockReturnValue(null);
+  it('sin API key en dev → loguea el código y no llama a la API', async () => {
+    config.get.mockImplementation((key: string) =>
+      key === 'app.isProduction' ? false : null,
+    );
     await service.sendVerificationCode('a@b.com', '123456');
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('123456'),
       'EmailSenderService',
     );
+  });
+
+  it('sin API key en producción → lanza y el error no incluye código ni email', async () => {
+    config.get.mockImplementation((key: string) =>
+      key === 'app.isProduction' ? true : null,
+    );
+
+    await expect(
+      service.sendVerificationCode('a@b.com', '123456'),
+    ).rejects.toThrow('Email delivery not configured');
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.not.stringContaining('123456'),
+      undefined,
+      'EmailSenderService',
+    );
+    const errorMessage = logger.error.mock.calls[0][0];
+    expect(errorMessage).not.toContain('123456');
+    expect(errorMessage).not.toContain('a@b.com');
   });
 
   it('con API key → POST a la API de Resend', async () => {

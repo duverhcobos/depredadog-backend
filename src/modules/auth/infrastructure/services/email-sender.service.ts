@@ -13,7 +13,7 @@ export class EmailSenderService implements IEmailSender {
   constructor(
     private readonly logger: LoggerService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   async sendVerificationCode(email: string, code: string): Promise<void> {
     await this.send(
@@ -41,7 +41,16 @@ export class EmailSenderService implements IEmailSender {
   ): Promise<void> {
     const apiKey = this.config.get<string>('email.resendApiKey');
     if (!apiKey) {
-      // Sin API key: fallback dev — el código queda en el log
+      if (this.config.get<boolean>('app.isProduction')!) {
+        // Prod sin RESEND_API_KEY: error de ops SIN código ni email (no se filtran secretos)
+        this.logger.error(
+          'RESEND_API_KEY missing in production — email delivery disabled',
+          undefined,
+          'EmailSenderService',
+        );
+        throw new Error('Email delivery not configured');
+      }
+      // Dev sin API key: fallback — el código queda en el log
       fallback();
       return;
     }

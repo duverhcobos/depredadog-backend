@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { DataSource } from 'typeorm';
+import helmet from 'helmet';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
@@ -54,6 +55,9 @@ export async function createE2EApp(): Promise<INestApplication> {
   }).compile();
 
   const app = moduleFixture.createNestApplication();
+
+  // helmet vive en main.ts — los e2e no pasan por ahí, se aplica acá
+  app.use(helmet());
 
   // El pipe global vive en main.ts — los e2e no pasan por ahí, se aplica acá
   app.useGlobalPipes(

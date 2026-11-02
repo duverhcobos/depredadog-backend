@@ -17,6 +17,8 @@ describe('GET /health (e2e)', () => {
     const body = res.body as { status: string; db: string };
     expect(body.db).toBe('up');
     expect(body.status).toBe('ok');
+    // Evidencia de helmet (main.ts / e2e-app)
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
 
   afterAll(async () => {
