@@ -222,6 +222,8 @@ Catálogo compartido de ingredientes y extras — una opción sirve a todos los 
 | `extra_price` | numeric(10,2) | NOT NULL, default 0 | 0 = incluido; >0 = extra pago |
 | `is_removable` | boolean | NOT NULL, default true | false = obligatorio (el pan) |
 | `is_available` | boolean | NOT NULL, default true | Toggle por ingrediente — apaga en TODO el menú |
+| `is_replaceable` | boolean | NOT NULL, default true | false = si se agota incluida NO admite cambio gratis — el dueño marca el producto agotado (corazón: salchicha, pan) |
+| `is_replacement_eligible` | boolean | NOT NULL, default true | false = no se ofrece como reemplazo gratis de otra opción agotada (salchicha y desmechadas — se cobran, no se regalan) |
 | `sort_order` | int | NOT NULL, default 0 | |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
@@ -261,6 +263,7 @@ Constraint: `PRIMARY KEY (product_id, option_id)`.
 - **Un solo mecanismo de personalización**: `product_modifier_options.included_by_default` (por producto) + `is_removable` + `extra_price` cubren "quítale la cebolla" (incluida por defecto, removible, $0), "el pan obligatorio" (default + no removible), "queso extra +$2" (no incluido, precio>0) y "máx 3 salsas" (`max_select` del grupo).
 - **Ingredientes compartidos**: las opciones viven en `modifier_options`, no por producto — apagar `is_available` la desactiva en todo el menú de una vez.
 - **Combos = producto con `is_combo=true`** + `combo_items`; no anidan. El precio del combo es `base_price` del producto-combo.
+- **Regla del cambio gratis** (propuesta 010): si un ingrediente incluido se agota, el cliente puede cambiarlo por UN adicional sin costo — acotada en dos direcciones con flags globales de la opción: `is_replaceable` (¿admite ser cambiada? false en el corazón del producto — si la salchicha se agota no hay perro que vender, el dueño marca el producto agotado) e `is_replacement_eligible` (¿puede regalarse como reemplazo? false en la salchicha — el doble se cobra). **Globales, no por producto**: `product_modifier_options` es *sparse* (solo filas de opciones incluidas) y los candidatos del picker son extras **sin fila** en la junction — su elegibilidad no puede vivir ahí; además "la salchicha no se regala" es verdad del ingrediente, no del producto. Si un caso por producto aparece, la junction puede pisarlo después.
 - **Horario del local no va aquí** — pertenece a `store`; `orders` valida contra él.
 - Fotos: galería con `is_primary` (índice parcial único).
 

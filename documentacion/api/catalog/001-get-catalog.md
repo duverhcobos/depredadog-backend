@@ -59,7 +59,9 @@ Sin body ni query params.
                   "isAvailable": true,
                   "includedByDefault": true,
                   "isRemovable": true,
-                  "sortOrder": 6
+                  "sortOrder": 6,
+                  "isReplaceable": true,
+                  "isReplacementEligible": true
                 }
               ]
             }
@@ -80,6 +82,8 @@ Sin body ni query params.
 | `options[].includedByDefault` | `true` = viene en el producto salvo que el cliente lo quite (por producto). |
 | `options[].isRemovable` | `false` = obligatorio (pan, salchicha) — no se desmarca aunque venga por defecto. |
 | `options[].extraPrice` | COP como número entero; `0` = gratis (toppings/salsas). |
+| `options[].isReplaceable` | `false` = si el ingrediente incluido se agota NO admite cambio por un adicional gratis — el dueño marca el producto agotado (corazón del producto: salchicha, pan). La app solo muestra el ↔ de reemplazo cuando es `true`. |
+| `options[].isReplacementEligible` | `false` = la opción no se lista como reemplazo gratis de otra agotada (salchicha — el doble se cobra). La app filtra el picker de reemplazos por este flag. |
 
 ### 401 — Sin token / token inválido
 

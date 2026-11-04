@@ -65,6 +65,8 @@ export class CatalogMapper {
     dto.includedByDefault = o.includedByDefault;
     dto.isRemovable = o.isRemovable;
     dto.sortOrder = o.sortOrder;
+    dto.isReplaceable = o.isReplaceable;
+    dto.isReplacementEligible = o.isReplacementEligible;
     return dto;
   }
 }

@@ -39,6 +39,8 @@ interface ProductSeed {
   description: string;
   basePrice: number;
   sortOrder: number;
+  /** Hero "El de la casa" en la app — solo uno por categoría. */
+  isFeatured?: boolean;
   /** Opciones incluidas por defecto (product_modifier_options). */
   defaultOptionIds: string[];
 }
@@ -290,6 +292,7 @@ const products: ProductSeed[] = [
     description: 'El alfa come de todo.',
     basePrice: 25000,
     sortOrder: 5,
+    isFeatured: true,
     defaultOptionIds: [
       u(101),
       u(102),
@@ -351,11 +354,11 @@ async function main(): Promise<void> {
       `);
 
       await manager.query(`
-        INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order")
+        INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order", "is_featured")
         VALUES ${products
           .map(
             (p) =>
-              `(${q(p.id)}, ${q(p.categoryId)}, ${q(p.name)}, ${q(p.slug)}, ${q(p.description)}, ${p.basePrice}, ${p.sortOrder})`,
+              `(${q(p.id)}, ${q(p.categoryId)}, ${q(p.name)}, ${q(p.slug)}, ${q(p.description)}, ${p.basePrice}, ${p.sortOrder}, ${p.isFeatured ?? false})`,
           )
           .join(', ')}
         ON CONFLICT DO NOTHING
@@ -363,9 +366,13 @@ async function main(): Promise<void> {
 
       // Filas sembradas antes de la columna traen el placeholder
       // 'product-<uuid>' de la migración — se pisan con el slug real.
+      // El flag is_featured se refresca igual: ON CONFLICT no lo toca.
       for (const p of products) {
         await manager.query(
           `UPDATE "products" SET "slug" = ${q(p.slug)} WHERE "id" = ${q(p.id)} AND "slug" <> ${q(p.slug)}`,
+        );
+        await manager.query(
+          `UPDATE "products" SET "is_featured" = ${p.isFeatured ?? false} WHERE "id" = ${q(p.id)} AND "is_featured" <> ${p.isFeatured ?? false}`,
         );
       }
 
@@ -400,6 +407,20 @@ async function main(): Promise<void> {
           ON CONFLICT DO NOTHING
         `);
       }
+
+      // Corazón del perro: ni se cambia ni se regala (regla del usuario).
+      await manager.query(
+        `UPDATE "modifier_options"
+            SET "is_replaceable" = false,
+                "is_replacement_eligible" = false
+          WHERE "name" IN ('Salchicha americana', 'Pan')`,
+      );
+      // Extras caros: se venden pero no se regalan como cambio gratis.
+      await manager.query(
+        `UPDATE "modifier_options"
+            SET "is_replacement_eligible" = false
+          WHERE "name" IN ('Carne desmechada', 'Pollo desmechado')`,
+      );
     });
     console.log('catalog seed applied');
   } finally {

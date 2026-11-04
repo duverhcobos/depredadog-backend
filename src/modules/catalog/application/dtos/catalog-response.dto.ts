@@ -6,6 +6,8 @@ export class ModifierOptionResponseDto {
   includedByDefault!: boolean;
   isRemovable!: boolean;
   sortOrder!: number;
+  isReplaceable!: boolean;
+  isReplacementEligible!: boolean;
 }
 
 export class ModifierGroupResponseDto {

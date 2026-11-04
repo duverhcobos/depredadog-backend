@@ -51,7 +51,7 @@ describe('CatalogMapper', () => {
     expect(dto.categories[0].products[0].imageUrl).toBeNull();
   });
 
-  it('mapea flags completos: includedByDefault, isRemovable y maxSelect null', () => {
+  it('mapea flags completos: includedByDefault, isRemovable, flags de reemplazo y maxSelect null', () => {
     const option = new ModifierOption();
     option.id = 'o1';
     option.name = 'Pan';
@@ -59,6 +59,8 @@ describe('CatalogMapper', () => {
     option.isAvailable = true;
     option.includedByDefault = true;
     option.isRemovable = false;
+    option.isReplaceable = false;
+    option.isReplacementEligible = false;
     option.sortOrder = -1;
 
     const group = new ModifierGroup();
@@ -94,6 +96,8 @@ describe('CatalogMapper', () => {
       includedByDefault: true,
       isRemovable: false,
       sortOrder: -1,
+      isReplaceable: false,
+      isReplacementEligible: false,
     });
   });
 });

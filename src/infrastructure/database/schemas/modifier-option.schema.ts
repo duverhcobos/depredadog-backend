@@ -23,6 +23,12 @@ export const ModifierOptionSchema = new EntitySchema<ModifierOption>({
     },
     isRemovable: { name: 'is_removable', type: 'boolean', default: true },
     isAvailable: { name: 'is_available', type: 'boolean', default: true },
+    isReplaceable: { name: 'is_replaceable', type: 'boolean', default: true },
+    isReplacementEligible: {
+      name: 'is_replacement_eligible',
+      type: 'boolean',
+      default: true,
+    },
     sortOrder: { name: 'sort_order', type: 'int', default: 0 },
     createdAt: { name: 'created_at', type: 'timestamptz', createDate: true },
     updatedAt: { name: 'updated_at', type: 'timestamptz', updateDate: true },
