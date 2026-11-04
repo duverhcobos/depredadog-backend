@@ -10,3 +10,4 @@
 | 002 | [Envío real de emails](002-envio-email-real.md) | 🔴 PENDIENTE | bloqueante |
 | 003 | [Hosting, dominio y deploy a producción](003-hosting-deploy.md) | 🔴 PENDIENTE | bloqueante |
 | 004 | [Seguridad HTTP: helmet, throttle prod, CORS](004-seguridad-headers-throttle.md) | 🔴 PENDIENTE | recomendado fuerte |
+| 005 | [Catálogo real de toppings y salsas (datos de negocio)](005-catalogo-toppings-salsas-real.md) | 🔴 PENDIENTE | bloqueante |
