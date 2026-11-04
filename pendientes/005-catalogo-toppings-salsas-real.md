@@ -27,6 +27,10 @@ perro = adicional pago; pan + salchicha no quitables.
   adicional pago — confirmar si también es salsa gratis seleccionable.
 - Alcance: ¿una sola lista global, o subconjuntos por categoría
   (perros / papas)?
+- Nota del evaluacion-modulo: hoy `Manada de Papas` quedó enlazada al
+  grupo `ingredients` igual que los perros → ofrece pan y salchicha como
+  adicionales pagos. Revisar con el menú real si papas debe tener
+  grupos/opciones propios.
 
 ## Criterio de cierre
 
