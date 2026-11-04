@@ -15,6 +15,7 @@ export const ProductSchema = new EntitySchema<Product>({
     id: { type: 'uuid', primary: true, generated: 'uuid' },
     categoryId: { name: 'category_id', type: 'uuid' },
     name: { type: 'varchar', length: 150 },
+    slug: { type: 'varchar', length: 120 },
     description: { type: 'text', nullable: true },
     basePrice: {
       name: 'base_price',

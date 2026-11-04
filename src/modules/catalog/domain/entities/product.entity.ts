@@ -5,6 +5,8 @@ export class Product {
   id!: string;
   categoryId!: string;
   name!: string;
+  /** Clave estable para el consumidor: 'depredador', 'cachorro'… */
+  slug!: string;
   description: string | null = null;
   basePrice!: number;
   isAvailable = true;

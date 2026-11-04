@@ -35,6 +35,7 @@ interface ProductSeed {
   id: string;
   categoryId: string;
   name: string;
+  slug: string;
   description: string;
   basePrice: number;
   sortOrder: number;
@@ -235,6 +236,7 @@ const products: ProductSeed[] = [
     id: u(201),
     categoryId: u(1),
     name: 'El Cachorro',
+    slug: 'cachorro',
     description: 'El primer mordisco de la manada.',
     basePrice: 14000,
     sortOrder: 0,
@@ -244,6 +246,7 @@ const products: ProductSeed[] = [
     id: u(202),
     categoryId: u(1),
     name: 'La Trampa',
+    slug: 'trampa',
     description: 'Lo dulce es el anzuelo.',
     basePrice: 16000,
     sortOrder: 1,
@@ -253,6 +256,7 @@ const products: ProductSeed[] = [
     id: u(203),
     categoryId: u(1),
     name: 'Ave de Presa',
+    slug: 'ave-presa',
     description: 'Cayó directo del corral.',
     basePrice: 18000,
     sortOrder: 2,
@@ -262,6 +266,7 @@ const products: ProductSeed[] = [
     id: u(204),
     categoryId: u(1),
     name: 'El Coyote',
+    slug: 'coyote',
     description: 'Cacería del desierto.',
     basePrice: 18000,
     sortOrder: 3,
@@ -271,6 +276,7 @@ const products: ProductSeed[] = [
     id: u(205),
     categoryId: u(1),
     name: 'El Carnicero',
+    slug: 'carnicero',
     description: 'Carne sobre carne, sin piedad.',
     basePrice: 17000,
     sortOrder: 4,
@@ -280,6 +286,7 @@ const products: ProductSeed[] = [
     id: u(206),
     categoryId: u(1),
     name: 'El Depredador',
+    slug: 'depredador',
     description: 'El alfa come de todo.',
     basePrice: 25000,
     sortOrder: 5,
@@ -299,6 +306,7 @@ const products: ProductSeed[] = [
     id: u(211),
     categoryId: u(2),
     name: 'Manada de Papas',
+    slug: 'manada-papas',
     description: 'Con las salsas de la casa.',
     basePrice: 10000,
     sortOrder: 0,
@@ -343,15 +351,23 @@ async function main(): Promise<void> {
       `);
 
       await manager.query(`
-        INSERT INTO "products" ("id", "category_id", "name", "description", "base_price", "sort_order")
+        INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order")
         VALUES ${products
           .map(
             (p) =>
-              `(${q(p.id)}, ${q(p.categoryId)}, ${q(p.name)}, ${q(p.description)}, ${p.basePrice}, ${p.sortOrder})`,
+              `(${q(p.id)}, ${q(p.categoryId)}, ${q(p.name)}, ${q(p.slug)}, ${q(p.description)}, ${p.basePrice}, ${p.sortOrder})`,
           )
           .join(', ')}
         ON CONFLICT DO NOTHING
       `);
+
+      // Filas sembradas antes de la columna traen el placeholder
+      // 'product-<uuid>' de la migración — se pisan con el slug real.
+      for (const p of products) {
+        await manager.query(
+          `UPDATE "products" SET "slug" = ${q(p.slug)} WHERE "id" = ${q(p.id)} AND "slug" <> ${q(p.slug)}`,
+        );
+      }
 
       // Perros y papas enlazados a los 3 grupos (ingredientes/toppings/salsas).
       const productGroupLinks = products.flatMap((p) =>

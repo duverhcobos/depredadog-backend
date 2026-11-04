@@ -20,6 +20,7 @@ export class ModifierGroupResponseDto {
 export class CatalogProductResponseDto {
   id!: string;
   name!: string;
+  slug!: string;
   description!: string | null;
   basePrice!: number;
   imageUrl!: string | null;

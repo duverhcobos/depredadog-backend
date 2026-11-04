@@ -33,6 +33,7 @@ export class CatalogMapper {
     const dto = new CatalogProductResponseDto();
     dto.id = p.id;
     dto.name = p.name;
+    dto.slug = p.slug;
     dto.description = p.description;
     dto.basePrice = p.basePrice;
     dto.imageUrl = p.images.find((i) => i.isPrimary)?.imageUrl ?? null;

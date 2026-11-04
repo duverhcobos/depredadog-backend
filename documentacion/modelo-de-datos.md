@@ -156,6 +156,7 @@ Menú: categorías, productos, combos fijos, y personalización por ingredientes
 | `id` | uuid PK | | |
 | `category_id` | uuid FK → `categories` | NOT NULL | |
 | `name` | varchar(150) | NOT NULL | |
+| `slug` | varchar(120) UNIQUE | NOT NULL | Clave estable para consumidores: assets, rutas |
 | `description` | text | NULL | |
 | `base_price` | numeric(10,2) | NOT NULL | Precio exacto en Postgres |
 | `is_available` | boolean | NOT NULL, default true | Toggle por producto ("se acabó el pan brioche") |

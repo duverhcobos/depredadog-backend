@@ -39,6 +39,7 @@ describe('GET /catalog (e2e)', () => {
     const product = await ds.getRepository(Product).save({
       categoryId: category.id,
       name: 'El Cachorro',
+      slug: 'el-cachorro',
       description: 'El primer mordisco de la manada.',
       basePrice: 14000,
       sortOrder: 0,
@@ -122,6 +123,7 @@ describe('GET /catalog (e2e)', () => {
         products: {
           id: string;
           name: string;
+          slug: string;
           description: string | null;
           basePrice: number;
           imageUrl: string | null;
@@ -158,6 +160,7 @@ describe('GET /catalog (e2e)', () => {
     expect(category.products).toHaveLength(1);
     const product = category.products[0];
     expect(product.name).toBe('El Cachorro');
+    expect(product.slug).toBe('el-cachorro');
     expect(product.description).toBe('El primer mordisco de la manada.');
     expect(product.basePrice).toBe(14000);
     expect(product.imageUrl).toBe('https://cdn.test/cachorro.png');
@@ -216,6 +219,7 @@ describe('GET /catalog (e2e)', () => {
     await ds.getRepository(Product).save({
       categoryId: category.id,
       name: 'El Agotado',
+      slug: 'el-agotado',
       basePrice: 15000,
       isAvailable: false,
       sortOrder: 0,

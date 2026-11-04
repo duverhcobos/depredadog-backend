@@ -36,6 +36,7 @@ Sin body ni query params.
         {
           "id": "uuid",
           "name": "El Cachorro",
+          "slug": "cachorro",
           "description": "El primer mordisco de la manada.",
           "basePrice": 14000,
           "imageUrl": null,
@@ -73,6 +74,7 @@ Sin body ni query params.
 | Campo | Descripción |
 |-------|-------------|
 | `categories[].products[]` | Incluye `isAvailable=false` (la app los muestra "agotados") y excluye soft-deleted. Categorías sin productos llegan con `products: []`. |
+| `products[].slug` | Clave estable del producto (única, inmutable): mapea el asset local `assets/images/products/<slug>.png` mientras `imageUrl` es `null` y es el segmento de ruta del detalle (`/home/category/<cat>/product/<slug>`). No derivar del `name` editable. |
 | `imageUrl` | Imagen primaria del producto; `null` mientras no haya fotos hospedadas (la app usa sus assets locales por convención de slug). |
 | `modifierGroups[].slug` | Clave estable del grupo: `ingredients` (adicionar/quitar), `toppings`, `sauces` — no depender del `name` editable. |
 | `options[].includedByDefault` | `true` = viene en el producto salvo que el cliente lo quite (por producto). |
