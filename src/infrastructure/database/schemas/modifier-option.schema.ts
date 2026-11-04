@@ -29,6 +29,7 @@ export const ModifierOptionSchema = new EntitySchema<ModifierOption>({
       type: 'boolean',
       default: true,
     },
+    isEssential: { name: 'is_essential', type: 'boolean', default: false },
     sortOrder: { name: 'sort_order', type: 'int', default: 0 },
     createdAt: { name: 'created_at', type: 'timestamptz', createDate: true },
     updatedAt: { name: 'updated_at', type: 'timestamptz', updateDate: true },

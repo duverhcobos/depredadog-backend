@@ -67,6 +67,7 @@ export class CatalogMapper {
     dto.sortOrder = o.sortOrder;
     dto.isReplaceable = o.isReplaceable;
     dto.isReplacementEligible = o.isReplacementEligible;
+    dto.isEssential = o.isEssential;
     return dto;
   }
 }

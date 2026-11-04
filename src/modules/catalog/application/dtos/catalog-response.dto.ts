@@ -8,6 +8,7 @@ export class ModifierOptionResponseDto {
   sortOrder!: number;
   isReplaceable!: boolean;
   isReplacementEligible!: boolean;
+  isEssential!: boolean;
 }
 
 export class ModifierGroupResponseDto {

@@ -18,6 +18,14 @@ export class ModifierOption {
    * baratas sí (default true).
    */
   isReplacementEligible = true;
+  /**
+   * Regla de negocio (decisión del usuario): ingrediente ESENCIAL —
+   * si se agota estando incluido, el producto entero queda agotado
+   * (salchicha, pan: sin ellos no hay perro que vender). El flag
+   * solo deriva agotado en opciones incluidas; como extra agotado
+   * solo desaparece/deshabilita.
+   */
+  isEssential = false;
   sortOrder = 0;
   /**
    * Resuelto POR PRODUCTO desde product_modifier_options (no es columna

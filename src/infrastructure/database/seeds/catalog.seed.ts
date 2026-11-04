@@ -408,11 +408,13 @@ async function main(): Promise<void> {
         `);
       }
 
-      // Corazón del perro: ni se cambia ni se regala (regla del usuario).
+      // Corazón del perro: ni se cambia, ni se regala, y si se agota
+      // tumba el producto (regla del usuario).
       await manager.query(
         `UPDATE "modifier_options"
             SET "is_replaceable" = false,
-                "is_replacement_eligible" = false
+                "is_replacement_eligible" = false,
+                "is_essential" = true
           WHERE "name" IN ('Salchicha americana', 'Pan')`,
       );
       // Extras caros: se venden pero no se regalan como cambio gratis.

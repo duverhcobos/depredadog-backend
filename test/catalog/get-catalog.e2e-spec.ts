@@ -72,6 +72,7 @@ describe('GET /catalog (e2e)', () => {
       isAvailable: true,
       isReplaceable: false,
       isReplacementEligible: false,
+      isEssential: true,
       sortOrder: 1,
     });
     await ds.getRepository(ProductModifierGroup).save({
@@ -149,6 +150,7 @@ describe('GET /catalog (e2e)', () => {
               sortOrder: number;
               isReplaceable: boolean;
               isReplacementEligible: boolean;
+              isEssential: boolean;
             }[];
           }[];
         }[];
@@ -188,6 +190,7 @@ describe('GET /catalog (e2e)', () => {
     expect(mozzarella.isAvailable).toBe(true);
     expect(mozzarella.isReplaceable).toBe(true);
     expect(mozzarella.isReplacementEligible).toBe(true);
+    expect(mozzarella.isEssential).toBe(false);
     expect(pan.name).toBe('Pan');
     expect(pan.extraPrice).toBe(0);
     expect(pan.includedByDefault).toBe(false);
@@ -195,6 +198,8 @@ describe('GET /catalog (e2e)', () => {
     // Flags de reemplazo en false viajan al response (no solo el default).
     expect(pan.isReplaceable).toBe(false);
     expect(pan.isReplacementEligible).toBe(false);
+    // El flag esencial en true viaja al response.
+    expect(pan.isEssential).toBe(true);
   });
 
   it('categoría sin productos → products: []', async () => {

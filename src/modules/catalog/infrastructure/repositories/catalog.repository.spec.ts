@@ -123,6 +123,7 @@ describe('CatalogRepository', () => {
     o1.groupId = 'g1';
     o1.isReplaceable = false;
     o1.isReplacementEligible = false;
+    o1.isEssential = true;
     const o2 = new ModifierOption();
     o2.id = 'o2';
     o2.groupId = 'g1';
@@ -142,6 +143,9 @@ describe('CatalogRepository', () => {
     expect(p1.modifierGroups[0].options[0].isReplacementEligible).toBe(false);
     expect(p1.modifierGroups[0].options[1].isReplaceable).toBe(true);
     expect(p1.modifierGroups[0].options[1].isReplacementEligible).toBe(true);
+    // El flag esencial viaja del registro al option armado.
+    expect(p1.modifierGroups[0].options[0].isEssential).toBe(true);
+    expect(p1.modifierGroups[0].options[1].isEssential).toBe(false);
     // Misma opción en p2: no es default allí.
     expect(p2.modifierGroups[0].options[0].includedByDefault).toBe(false);
     expect(p2.images).toEqual([]);
