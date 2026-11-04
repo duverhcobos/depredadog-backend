@@ -11,6 +11,7 @@ import throttleConfig from './config/throttle.config';
 import { validate } from './config/env.validation';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { DomainExceptionHandler } from './common/filters/handlers/domain-exception.handler';
 import { HttpExceptionHandler } from './common/filters/handlers/http-exception.handler';
@@ -51,6 +52,7 @@ import { HealthModule } from './infrastructure/health/health.module';
     DatabaseModule,
     HealthModule,
     AuthModule,
+    CatalogModule,
   ],
   providers: [
     DomainExceptionHandler,

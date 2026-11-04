@@ -13,7 +13,7 @@ export class EmailSenderService implements IEmailSender {
   constructor(
     private readonly logger: LoggerService,
     private readonly config: ConfigService,
-  ) { }
+  ) {}
 
   async sendVerificationCode(email: string, code: string): Promise<void> {
     await this.send(

@@ -22,7 +22,8 @@
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts",
-    "migration:show": "typeorm-ts-node-commonjs migration:show -d typeorm.config.ts"
+    "migration:show": "typeorm-ts-node-commonjs migration:show -d typeorm.config.ts",
+    "seed:catalog": "ts-node src/infrastructure/database/seeds/catalog.seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -95,6 +96,7 @@
       "!**/main.ts",
       "!**/*.schema.ts",
       "!**/migrations/**",
+      "!**/seeds/**",
       "!**/*.dto.ts",
       "!**/*.exception.ts",
       "!**/*.enum.ts",

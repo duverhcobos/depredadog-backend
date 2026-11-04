@@ -202,9 +202,11 @@ Grupos de personalización compartidos entre productos: "Ingredientes", "Salsas"
 | Columna | Tipo | Null | Notas |
 |---|---|---|---|
 | `id` | uuid PK | | |
+| `slug` | varchar(50) UNIQUE | NOT NULL | Clave estable para el consumidor: `ingredients`, `toppings`, `sauces` — el nombre es display editable |
 | `name` | varchar(100) | NOT NULL | |
 | `min_select` | int | NOT NULL, default 0 | 1 = elección obligatoria (ej. tamaño) |
 | `max_select` | int | NULL | NULL = sin límite; 3 = "elige máx 3 salsas" |
+| `sort_order` | int | NOT NULL, default 0 | Orden de despliegue del grupo en el menú (global — mismo orden para todo el menú) |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
 ### `modifier_options`
@@ -217,7 +219,6 @@ Catálogo compartido de ingredientes y extras — una opción sirve a todos los 
 | `group_id` | uuid FK → `modifier_groups` ON DELETE CASCADE | NOT NULL | |
 | `name` | varchar(100) | NOT NULL | Cebolla, queso extra, salsa rosada… |
 | `extra_price` | numeric(10,2) | NOT NULL, default 0 | 0 = incluido; >0 = extra pago |
-| `included_by_default` | boolean | NOT NULL, default false | Viene en el producto salvo que el cliente lo quite |
 | `is_removable` | boolean | NOT NULL, default true | false = obligatorio (el pan) |
 | `is_available` | boolean | NOT NULL, default true | Toggle por ingrediente — apaga en TODO el menú |
 | `sort_order` | int | NOT NULL, default 0 | |
@@ -236,9 +237,27 @@ Qué grupos de modificadores aplica a cada producto.
 
 Constraint: `PRIMARY KEY (product_id, group_id)` (tabla puente sin id propio).
 
+### `product_modifier_options`
+
+Qué opciones vienen **por defecto en cada producto** — evolución del
+modelo: `included_by_default` NO es global en `modifier_options` porque
+la misma opción puede ser default en un producto y extra en otro
+(mozzarella: default en El Cachorro, adicional en El Coyote). La tabla
+es *sparse*: solo existen filas de opciones incluidas por defecto; el
+resto de opciones del grupo enlazado se ofrece como adicional.
+
+| Columna | Tipo | Null | Notas |
+|---|---|---|---|
+| `product_id` | uuid FK → `products` ON DELETE CASCADE | NOT NULL | |
+| `option_id` | uuid FK → `modifier_options` ON DELETE CASCADE | NOT NULL | |
+| `included_by_default` | boolean | NOT NULL, default true | Reservado: false = la fila marca opción disponible-pero-nunca-default (futura exclusión por producto) |
+| `sort_order` | int | NOT NULL, default 0 | Orden de la opción en este producto |
+
+Constraint: `PRIMARY KEY (product_id, option_id)`.
+
 ### Decisiones tomadas (`catalog`)
 
-- **Un solo mecanismo de personalización**: `included_by_default` + `is_removable` + `extra_price` cubren "quítale la cebolla" (incluida, removible, $0), "el pan obligatorio" (no removible), "queso extra +$2" (no incluido, precio>0) y "máx 3 salsas" (`max_select` del grupo).
+- **Un solo mecanismo de personalización**: `product_modifier_options.included_by_default` (por producto) + `is_removable` + `extra_price` cubren "quítale la cebolla" (incluida por defecto, removible, $0), "el pan obligatorio" (default + no removible), "queso extra +$2" (no incluido, precio>0) y "máx 3 salsas" (`max_select` del grupo).
 - **Ingredientes compartidos**: las opciones viven en `modifier_options`, no por producto — apagar `is_available` la desactiva en todo el menú de una vez.
 - **Combos = producto con `is_combo=true`** + `combo_items`; no anidan. El precio del combo es `base_price` del producto-combo.
 - **Horario del local no va aquí** — pertenece a `store`; `orders` valida contra él.
@@ -712,7 +731,7 @@ Resumen de tablas por módulo:
 | Módulo | Tablas |
 |---|---|
 | `auth` | `users`, `addresses`, `devices`, `auth_tokens`, `refresh_tokens` |
-| `catalog` | `categories`, `products`, `product_images`, `combo_items`, `modifier_groups`, `modifier_options`, `product_modifier_groups` |
+| `catalog` | `categories`, `products`, `product_images`, `combo_items`, `modifier_groups`, `modifier_options`, `product_modifier_groups`, `product_modifier_options` |
 | `store` | `store_settings`, `business_hours`, `tables` |
 | `orders` | `orders`, `order_items`, `order_item_modifiers` |
 | `payments` | `payments` |
