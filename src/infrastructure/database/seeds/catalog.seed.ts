@@ -45,7 +45,7 @@ interface ProductSeed {
   defaultOptionIds: string[];
 }
 
-// Categorías del mock (slugs = segmentos de ruta de la app).
+// Categorías de la carta (slugs = segmentos de ruta de la app).
 const categories: CategorySeed[] = [
   { id: u(1), slug: 'perros', name: 'Perros', sortOrder: 0 },
   { id: u(2), slug: 'mas', name: '& Más', sortOrder: 1 },
@@ -54,44 +54,44 @@ const categories: CategorySeed[] = [
 ];
 
 // Grupos compartidos — min_select=0 / max_select=NULL (ilimitados) por
-// defecto; toppings y salsas son gratis e ilimitados en el mock.
+// defecto; toppings y salsas son gratis e ilimitados en la carta.
 const groups: GroupSeed[] = [
   { id: u(11), slug: 'ingredients', name: 'Ingredientes', sortOrder: 0 },
   { id: u(12), slug: 'toppings', name: 'Toppings', sortOrder: 1 },
   { id: u(13), slug: 'sauces', name: 'Salsas', sortOrder: 2 },
 ];
 
-// ingredientCatalog del mock (mismo orden = sort_order). Pan no se ofrece
+// Adiciones de la carta real (mismo orden = sort_order). Pan no se ofrece
 // en la app pero existe como opción no-removible incluida en todo perro;
-// la salchicha también no-removible y además se vende como adicional
-// "doble" (extra_price del mock).
+// la salchicha también es no-removible pero ya no se vende como extra
+// (extra_price=0 — el menú no tiene "doble salchicha").
 const ingredientOptions: OptionSeed[] = [
   { id: u(101), name: 'Pan', extraPrice: 0, isRemovable: false, sortOrder: -1 },
   {
     id: u(102),
     name: 'Salchicha americana',
-    extraPrice: 5000,
+    extraPrice: 0,
     isRemovable: false,
     sortOrder: 0,
   },
   {
     id: u(103),
     name: 'Carne desmechada',
-    extraPrice: 5000,
+    extraPrice: 6000,
     isRemovable: true,
     sortOrder: 1,
   },
   {
     id: u(104),
     name: 'Pollo desmechado',
-    extraPrice: 4500,
+    extraPrice: 5000,
     isRemovable: true,
     sortOrder: 2,
   },
   {
     id: u(105),
     name: 'Chile con carne',
-    extraPrice: 4500,
+    extraPrice: 5000,
     isRemovable: true,
     sortOrder: 3,
   },
@@ -119,14 +119,14 @@ const ingredientOptions: OptionSeed[] = [
   {
     id: u(109),
     name: 'Salsa de queso cheddar',
-    extraPrice: 3000,
+    extraPrice: 4000,
     isRemovable: true,
     sortOrder: 7,
   },
   {
     id: u(110),
     name: 'Piña en trozos',
-    extraPrice: 3000,
+    extraPrice: 2500,
     isRemovable: true,
     sortOrder: 8,
   },
@@ -146,32 +146,32 @@ const ingredientOptions: OptionSeed[] = [
   },
 ];
 
-// toppingCatalog del mock — provisionales, gratis (pendientes/005).
+// Toppings de la carta real — gratis e ilimitados en todos los perros.
 const toppingOptions: OptionSeed[] = [
   {
     id: u(121),
-    name: 'Papa ripio',
+    name: 'Papas ripio',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 0,
   },
   {
     id: u(122),
-    name: 'Queso rallado',
+    name: 'Cebolla picada',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 1,
   },
   {
     id: u(123),
-    name: 'Cebolla crispy',
+    name: 'Tomate picado con cilantro',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 2,
   },
   {
     id: u(124),
-    name: 'Tocineta picada',
+    name: 'Pepinillos agridulces',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 3,
@@ -183,56 +183,90 @@ const toppingOptions: OptionSeed[] = [
     isRemovable: true,
     sortOrder: 4,
   },
+  {
+    id: u(126),
+    name: 'Tostacos',
+    extraPrice: 0,
+    isRemovable: true,
+    sortOrder: 5,
+  },
+  {
+    id: u(127),
+    name: 'Madurito',
+    extraPrice: 0,
+    isRemovable: true,
+    sortOrder: 6,
+  },
+  {
+    id: u(128),
+    name: 'Guacamole',
+    extraPrice: 0,
+    isRemovable: true,
+    sortOrder: 7,
+  },
 ];
 
-// sauceCatalog del mock — provisionales, gratis (pendientes/005).
+// Salsas de la carta real — gratis.
 const sauceOptions: OptionSeed[] = [
   {
     id: u(131),
-    name: 'Ketchup',
+    name: 'Salsa rosada',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 0,
   },
   {
     id: u(132),
-    name: 'Mayonesa',
+    name: 'Salsa de tomate',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 1,
   },
   {
     id: u(133),
-    name: 'Mostaza',
+    name: 'Salsa de piña',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 2,
   },
   {
     id: u(134),
-    name: 'Salsa de piña',
+    name: 'Salsa de ajo',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 3,
   },
   {
     id: u(135),
-    name: 'Salsa rosada',
+    name: 'Mayomostaza',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 4,
   },
   {
     id: u(136),
-    name: 'Salsa tártara',
+    name: 'Salsa picante',
     extraPrice: 0,
     isRemovable: true,
     sortOrder: 5,
   },
-  { id: u(137), name: 'BBQ', extraPrice: 0, isRemovable: true, sortOrder: 6 },
+  {
+    id: u(137),
+    name: 'Salsa Depredador',
+    extraPrice: 0,
+    isRemovable: true,
+    sortOrder: 6,
+  },
+  {
+    id: u(138),
+    name: 'BBQ ahumada',
+    extraPrice: 0,
+    isRemovable: true,
+    sortOrder: 7,
+  },
 ];
 
-// Los 7 ítems del mock — description = tagline de la carta.
+// Los 7 ítems del menú — description = tagline de la carta.
 const products: ProductSeed[] = [
   {
     id: u(201),
@@ -353,6 +387,42 @@ async function main(): Promise<void> {
         ON CONFLICT DO NOTHING
       `);
 
+      // Carta real: el ON CONFLICT no renombra filas ya sembradas ni pisa
+      // precios — se corrigen con UPDATEs idempotentes por id/nombre.
+      // Ids repurposados de toppings/salsas (u(125) Jalapeños ya quedó igual).
+      const optionRenames: { id: string; name: string }[] = [
+        { id: u(121), name: 'Papas ripio' },
+        { id: u(122), name: 'Cebolla picada' },
+        { id: u(123), name: 'Tomate picado con cilantro' },
+        { id: u(124), name: 'Pepinillos agridulces' },
+        { id: u(131), name: 'Salsa rosada' },
+        { id: u(132), name: 'Salsa de tomate' },
+        { id: u(133), name: 'Salsa de piña' },
+        { id: u(134), name: 'Salsa de ajo' },
+        { id: u(135), name: 'Mayomostaza' },
+        { id: u(136), name: 'Salsa picante' },
+        { id: u(137), name: 'Salsa Depredador' },
+      ];
+      for (const r of optionRenames) {
+        await manager.query(
+          `UPDATE "modifier_options" SET "name" = ${q(r.name)} WHERE "id" = ${q(r.id)} AND "name" <> ${q(r.name)}`,
+        );
+      }
+
+      const optionPrices: { name: string; extraPrice: number }[] = [
+        { name: 'Salchicha americana', extraPrice: 0 },
+        { name: 'Carne desmechada', extraPrice: 6000 },
+        { name: 'Pollo desmechado', extraPrice: 5000 },
+        { name: 'Chile con carne', extraPrice: 5000 },
+        { name: 'Salsa de queso cheddar', extraPrice: 4000 },
+        { name: 'Piña en trozos', extraPrice: 2500 },
+      ];
+      for (const o of optionPrices) {
+        await manager.query(
+          `UPDATE "modifier_options" SET "extra_price" = ${o.extraPrice} WHERE "name" = ${q(o.name)} AND "extra_price" <> ${o.extraPrice}`,
+        );
+      }
+
       await manager.query(`
         INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order", "is_featured")
         VALUES ${products
@@ -386,8 +456,8 @@ async function main(): Promise<void> {
         ON CONFLICT DO NOTHING
       `);
 
-      // Defaults por producto: ingredientIds del mock + pan y salchicha en
-      // TODOS los perros (ambas no-removibles a nivel catálogo).
+      // Defaults por producto: ingredientIds de la carta + pan y salchicha
+      // en TODOS los perros (ambas no-removibles a nivel catálogo).
       const productOptions = products.flatMap((p) =>
         p.defaultOptionIds.map((optionId, i) => ({
           productId: p.id,

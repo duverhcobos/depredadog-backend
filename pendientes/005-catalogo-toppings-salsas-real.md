@@ -1,6 +1,9 @@
 # Pendiente: Catálogo real de toppings y salsas (datos de negocio)
 
-> **Estado: 🔴 PENDIENTE** — el usuario aún no tiene la lista real
+> **Estado: � RESUELTO** (propuesta 012) — el dueño entregó la carta
+> real y el seed la siembra: 8 toppings + 8 salsas reales, precios de
+> adiciones del menú, salchicha sin extra (sin doble — decisión del
+> usuario), papas "como estaba", cheddar solo como adición paga
 > **Producto:** ambos (espejo de `pcalientes_app/pendientes/009`)
 > **Bloqueo:** bloqueante — el seed/catálogo debe reflejar el menú real
 > del negocio antes de lanzar
