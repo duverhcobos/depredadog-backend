@@ -99,6 +99,10 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   LOG_MAX_SIZE?: string;
+
+  @IsOptional()
+  @IsString()
+  STORE_TIMEZONE?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

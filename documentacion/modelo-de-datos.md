@@ -333,7 +333,8 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | Columna | Tipo | Null | Notas |
 |---|---|---|---|
 | `id` | uuid PK | | |
-| `order_number` | int | NOT NULL | Ticket legible — secuencial diario ("pedido #15") |
+| `order_date` | date | NOT NULL | Día de negocio en la tz del local (la escribe la app al crear el pedido) — base del reset diario del consecutivo |
+| `order_number` | int | NOT NULL | Ticket legible — secuencial diario por `order_date` ("pedido #15") |
 | `channel` | enum `order_channel` | NOT NULL | `online` \| `presencial` — quién lo creó |
 | `service_type` | enum `order_service_type` | NOT NULL | `pickup` \| `delivery` \| `dine_in` — cómo se consume |
 | `customer_id` | uuid FK → `users` | NULL | NULL en presencial (cliente sin cuenta) |
@@ -350,7 +351,7 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `cancel_reason` | text | NULL | |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
-Índices: `INDEX(status, created_at)` (cola de cocina), `INDEX(customer_id, created_at)` (historial del cliente), índice parcial `INDEX(table_id) WHERE status NOT IN ('done','cancelled')` (mesa ocupada), `INDEX(order_number, created_at::date)` vía expresión o columna `order_date` si se requiere reset diario.
+Constraints/índices (implementado, propuesta 013): `UNIQUE(order_date, order_number)` (consecutivo diario por día de negocio), `INDEX(status, created_at)` (cola de cocina), `INDEX(customer_id, created_at)` (historial del cliente), índice parcial `INDEX(table_id) WHERE status NOT IN ('done','cancelled')` (mesa ocupada).
 
 ### `order_items`
 
@@ -390,7 +391,7 @@ Modificadores elegidos por ítem — filas hijas, consultables para reportes y c
 - **`channel` ≠ `service_type`**: canal = quién lo creó (app vs admin); servicio = cómo se consume. Cubre "pedido por teléfono para recoger" (`presencial` + `pickup`).
 - **Modificadores en filas hijas** (no jsonb): reportes por ingrediente y comanda limpia.
 - **Sin propina**. El estado de pago se decide en `payments` (columna aquí vs tabla propia).
-- `order_number` propuesto secuencial diario — si el reset diario complica, pasa a global.
+- `order_number` secuencial diario **implementado** (propuesta 013): columna `order_date` + `UNIQUE(order_date, order_number)` — el reset diario quedó por día de negocio en la tz del local.
 
 ---
 

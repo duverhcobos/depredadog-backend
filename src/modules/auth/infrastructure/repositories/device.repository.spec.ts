@@ -39,7 +39,11 @@ describe('DeviceRepository', () => {
       .mockResolvedValueOnce(null) // no existía
       .mockResolvedValueOnce(winner); // el otro proceso ganó
     orm.save.mockRejectedValue(
-      new QueryFailedError('INSERT', [], { code: '23505' }),
+      new QueryFailedError(
+        'INSERT',
+        [],
+        Object.assign(new Error('driver'), { code: '23505' }),
+      ),
     );
     const device = await repo.touch('u1', 'fp-1', null);
     expect(device).toBe(winner);

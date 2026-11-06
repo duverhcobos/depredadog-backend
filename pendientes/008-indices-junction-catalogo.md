@@ -1,31 +1,24 @@
 # Pendiente: Índices en junctions del catálogo (product_modifier_groups/options)
 
-> **Estado: 🔴 PENDIENTE** — detectado en evaluacion-modulo de catalog
+> **Estado: ✅ RESUELTO — no requería índices** (propuesta 013, corrección
+> post-revisión): la premisa de este pendiente era errónea. Ambas
+> junctions tienen PK compuesto `(product_id, …)` — un btree compuesto
+> **ya sirve** `WHERE product_id IN (...)` por prefijo izquierdo.
+> Verificado con `EXPLAIN` en test: Bitmap Heap Scan vía pkey (en dev el
+> planner elige seq scan solo porque la tabla está casi vacía — óptimo
+> igual). Se llegó a crear la migración `AddCatalogJunctionIndexes`, se
+> aplicó, y se revirtió/borró sin commit al detectar la redundancia.
 > **Producto:** backend
-> **Bloqueo:** recomendado — seq scan aceptable con menú chico, pero la
-> convención de `listados-paginacion-indices` es obligatoria
 
 ## Contexto
 
 `CatalogRepository.getMenu()` consulta `product_modifier_groups` y
-`product_modifier_options` con `WHERE product_id IN (...)` — ninguna de
-las dos tablas tiene índice por `product_id` (solo pkey). Todas las demás
-FK consultadas del catálogo sí están indexadas
-(`products.category_id+sort`, `product_images.product_id+sort`,
-`modifier_options.group_id+sort`).
+`product_modifier_options` con `WHERE product_id IN (...)`. El análisis
+original afirmaba "solo pkey" como si el PK compuesto no indexara
+`product_id` — incorrecto: `PRIMARY KEY (product_id, group_id)` y
+`PRIMARY KEY (product_id, option_id)` cubren ese filtro.
 
-Con el menú de un solo negocio (~7 productos × pocas decenas de filas)
-el seq scan es imperceptible — no es urgente, es una convención
-incumplida.
+## Criterio de cierre — cumplido
 
-## Qué falta
-
-- Migración con `CREATE INDEX` en:
-  - `product_modifier_groups(product_id)`
-  - `product_modifier_options(product_id)`
-- Verificar `revert` en dev y test como siempre.
-
-## Criterio de cierre
-
-- Ambos índices existen en dev y test; `EXPLAIN` de las dos queries del
-  repositorio muestra index scan.
+- `EXPLAIN` verificado en test: index scan vía pkey, sin índices
+  dedicados. No quedan índices redundantes en ninguna BD.

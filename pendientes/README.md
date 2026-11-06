@@ -13,5 +13,6 @@
 | 005 | [Catálogo real de toppings y salsas (datos de negocio)](005-catalogo-toppings-salsas-real.md) | � RESUELTO | bloqueante |
 | 006 | [Imágenes reales de productos (upload/hosting)](006-imagenes-productos-reales.md) | 🔴 PENDIENTE | bloqueante |
 | 007 | [Gestión de catálogo por el dueño (admin CRUD + disponibilidad)](007-gestion-catalogo-admin.md) | 🔴 PENDIENTE | bloqueante |
-| 008 | [Índices en junctions del catálogo](008-indices-junction-catalogo.md) | 🔴 PENDIENTE | recomendado |
+| 008 | [Índices en junctions del catálogo](008-indices-junction-catalogo.md) | ✅ RESUELTO (propuesta 013) | recomendado |
 | 009 | [Orders: re-validar reglas del catálogo en el servidor](009-orders-revalidar-catalogo.md) | 🔴 PENDIENTE | bloqueante para orders |
+| 010 | [Onboarding Nequi Conecta (llaves QA + certificación + prod)](010-nequi-conecta-onboarding.md) | ⏸️ PENDIENTE EXTERNO | bloqueante para pagos reales |

@@ -26,7 +26,10 @@ describe('UserRepository', () => {
   });
 
   it('save traduce unique violation de email a 409', async () => {
-    const driverError = { code: '23505', constraint: 'uq_users_email' };
+    const driverError = Object.assign(new Error('driver'), {
+      code: '23505',
+      constraint: 'uq_users_email',
+    });
     orm.save.mockRejectedValue(new QueryFailedError('INSERT', [], driverError));
     await expect(repo.save(new User())).rejects.toBeInstanceOf(
       EmailAlreadyRegisteredException,
