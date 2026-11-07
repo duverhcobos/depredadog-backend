@@ -35,5 +35,6 @@ import { CatalogRepository } from './infrastructure/repositories/catalog.reposit
     GetCatalogUseCase,
     { provide: CATALOG_REPOSITORY, useClass: CatalogRepository },
   ],
+  exports: [CATALOG_REPOSITORY],
 })
-export class CatalogModule {}
+export class CatalogModule { }

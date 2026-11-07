@@ -345,6 +345,8 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `table_id` | uuid FK → `tables` | NULL | `dine_in`: mesa asignada por el admin |
 | `address_id` | uuid FK → `addresses` ON DELETE SET NULL | NULL | `delivery`: dirección elegida del cliente — se suelta si se borra (§014), el snapshot está en `delivery_address` |
 | `delivery_address` | text | NULL | Snapshot inmutable de la dirección al pedir |
+| `delivery_location_link` | text | NULL | Link de ubicación (pin de Google) que manda el cliente en delivery — solo lo ve el repartidor |
+| `client_request_id` | uuid | NULL | Idempotency key que genera la app por pedido — `UNIQUE(customer_id, client_request_id)` parcial evita dobles POST |
 | `status` | enum `order_status` | NOT NULL, default `pending` | `pending` → `confirmed` → `preparing` → `done`; `cancelled` en cualquier punto |
 | `subtotal` | numeric(10,2) | NOT NULL | |
 | `delivery_fee` | numeric(10,2) | NOT NULL, default 0 | Snapshot del fee al momento del pedido |
@@ -355,7 +357,7 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `cancel_reason` | text | NULL | |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
-Constraints/índices (implementado, propuesta 013): `UNIQUE(order_date, order_number)` (consecutivo diario por día de negocio), `INDEX(status, created_at)` (cola de cocina), `INDEX(customer_id, created_at)` (historial del cliente), índice parcial `INDEX(table_id) WHERE status NOT IN ('done','cancelled')` (mesa ocupada).
+Constraints/índices (implementado, propuesta 013): `UNIQUE(order_date, order_number)` (consecutivo diario por día de negocio), `INDEX(status, created_at)` (cola de cocina), `INDEX(customer_id, created_at)` (historial del cliente), índice parcial `INDEX(table_id) WHERE status NOT IN ('done','cancelled')` (mesa ocupada), índice parcial `UNIQUE(customer_id, client_request_id) WHERE client_request_id IS NOT NULL` (idempotencia del POST /orders, propuesta 015).
 
 ### `order_items`
 

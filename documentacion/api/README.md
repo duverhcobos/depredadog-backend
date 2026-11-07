@@ -40,3 +40,7 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 | DELETE | `/addresses/:id` | [015](auth/015-delete-addresses-id.md) | 🔶 backend listo — sin integrar |
 | GET | `/catalog` | [catálogo completo](catalog/001-get-catalog.md) | 🔶 backend listo — sin integrar |
 | GET | `/store/config` | [001](store/001-get-store-config.md) | 🔶 backend listo — sin integrar |
+| POST | `/orders` | [001](orders/001-post-orders.md) | 🔶 backend listo — sin integrar |
+| GET | `/orders` | [002](orders/002-get-orders.md) | 🔶 backend listo — sin integrar |
+| GET | `/orders/:id` | [003](orders/003-get-orders-id.md) | 🔶 backend listo — sin integrar |
+| POST | `/orders/:id/cancel` | [004](orders/004-post-orders-id-cancel.md) | 🔶 backend listo — sin integrar |

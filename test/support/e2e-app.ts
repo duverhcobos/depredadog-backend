@@ -90,7 +90,7 @@ export function lastCodeFor(
 export async function cleanAuthTables(app: INestApplication): Promise<void> {
   const ds = app.get(DataSource);
   await ds.query(
-    'TRUNCATE refresh_tokens, auth_tokens, devices, addresses, users RESTART IDENTITY CASCADE',
+    'TRUNCATE refresh_tokens, auth_tokens, devices, addresses, users, orders, payments RESTART IDENTITY CASCADE',
   );
   sentEmails.length = 0;
   googleProfile = null;

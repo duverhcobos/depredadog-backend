@@ -68,6 +68,22 @@ export const OrderSchema = new EntitySchema<Order>({
     },
     notes: { type: 'text', nullable: true },
     cancelReason: { name: 'cancel_reason', type: 'text', nullable: true },
+    contactPhone: {
+      name: 'contact_phone',
+      type: 'varchar',
+      length: 20,
+      nullable: true,
+    },
+    deliveryLocationLink: {
+      name: 'delivery_location_link',
+      type: 'text',
+      nullable: true,
+    },
+    clientRequestId: {
+      name: 'client_request_id',
+      type: 'uuid',
+      nullable: true,
+    },
     createdAt: { name: 'created_at', type: 'timestamptz', createDate: true },
     updatedAt: { name: 'updated_at', type: 'timestamptz', updateDate: true },
   },

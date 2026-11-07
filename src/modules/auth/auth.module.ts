@@ -110,5 +110,6 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     { provide: ADDRESS_REPOSITORY, useClass: AddressRepository },
     JwtStrategy,
   ],
+  exports: [ADDRESS_REPOSITORY],
 })
-export class AuthModule {}
+export class AuthModule { }

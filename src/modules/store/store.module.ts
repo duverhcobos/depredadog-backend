@@ -25,5 +25,6 @@ import { StoreRepository } from './infrastructure/repositories/store.repository'
     GetStoreConfigUseCase,
     { provide: STORE_REPOSITORY, useClass: StoreRepository },
   ],
+  exports: [STORE_REPOSITORY],
 })
-export class StoreModule {}
+export class StoreModule { }

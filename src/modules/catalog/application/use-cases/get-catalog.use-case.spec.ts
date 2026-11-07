@@ -13,6 +13,7 @@ describe('GetCatalogUseCase', () => {
   beforeEach(async () => {
     catalog = {
       getMenu: jest.fn(),
+      getOrderableProducts: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [

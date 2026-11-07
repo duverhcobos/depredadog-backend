@@ -12,6 +12,8 @@ export class Payment {
   /** Respuesta cruda del proveedor/webhook — auditoría. */
   providerPayload: Record<string, unknown> | null = null;
   evidenceUrl: string | null = null;
+  /** Celular que recibe el push (transfer — quién paga, §024). */
+  payerPhone: string | null = null;
   confirmedBy: string | null = null;
   confirmedAt: Date | null = null;
   refundedAt: Date | null = null;

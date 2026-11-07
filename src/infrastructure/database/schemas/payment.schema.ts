@@ -46,6 +46,12 @@ export const PaymentSchema = new EntitySchema<Payment>({
       length: 500,
       nullable: true,
     },
+    payerPhone: {
+      name: 'payer_phone',
+      type: 'varchar',
+      length: 20,
+      nullable: true,
+    },
     confirmedBy: { name: 'confirmed_by', type: 'uuid', nullable: true },
     confirmedAt: { name: 'confirmed_at', type: 'timestamptz', nullable: true },
     refundedAt: { name: 'refunded_at', type: 'timestamptz', nullable: true },
