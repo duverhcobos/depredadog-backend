@@ -348,6 +348,7 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `discount` | numeric(10,2) | NOT NULL, default 0 | Lo llena `promotions` |
 | `total` | numeric(10,2) | NOT NULL | |
 | `notes` | text | NULL | "Timbre roto", "sin picante" |
+| `contact_phone` | varchar(20) | NULL | Quién recibe el pedido — la app lo exige en delivery (§024); NULL en pickup/presencial |
 | `cancel_reason` | text | NULL | |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
@@ -392,6 +393,7 @@ Modificadores elegidos por ítem — filas hijas, consultables para reportes y c
 - **Modificadores en filas hijas** (no jsonb): reportes por ingrediente y comanda limpia.
 - **Sin propina**. El estado de pago se decide en `payments` (columna aquí vs tabla propia).
 - `order_number` secuencial diario **implementado** (propuesta 013): columna `order_date` + `UNIQUE(order_date, order_number)` — el reset diario quedó por día de negocio en la tz del local.
+- **Teléfonos del pedido** (`orders.contact_phone`, `payments.payer_phone`) — decisión §024: quién recibe vive en la orden (delivery lo exige); quién paga vive en el pago. En efectivo quien recibe = quien paga.
 
 ---
 
@@ -412,6 +414,7 @@ Pagos por pedido: efectivo, transferencia manual y pasarela online, con reembols
 | `provider_reference` | varchar(255) | NULL | Id de transacción externa |
 | `provider_payload` | jsonb | NULL | Respuesta cruda del webhook — auditoría |
 | `evidence_url` | varchar(500) | NULL | Comprobante de transferencia |
+| `payer_phone` | varchar(20) | NULL | Celular que recibe el push Nequi en `transfer` — quién paga (§024); NULL en `cash`/`gateway` |
 | `confirmed_by` | uuid FK → `users` | NULL | Admin que confirmó efectivo/transferencia |
 | `confirmed_at` | timestamptz | NULL | |
 | `refunded_at` | timestamptz | NULL | |
