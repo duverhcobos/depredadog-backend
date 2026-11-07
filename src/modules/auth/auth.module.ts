@@ -11,6 +11,15 @@ import { RefreshTokenSchema } from '../../infrastructure/database/schemas/refres
 import { UserSchema } from '../../infrastructure/database/schemas/user.schema';
 import { LoggerModule } from '../../common/logger/logger.module';
 import { AuthController } from './presentation/controllers/auth.controller';
+import { AddressesController } from './presentation/controllers/addresses.controller';
+import { AddressesService } from './application/services/addresses.service';
+import { AddressMapper } from './application/mappers/address.mapper';
+import { ListAddressesUseCase } from './application/use-cases/list-addresses.use-case';
+import { CreateAddressUseCase } from './application/use-cases/create-address.use-case';
+import { UpdateAddressUseCase } from './application/use-cases/update-address.use-case';
+import { DeleteAddressUseCase } from './application/use-cases/delete-address.use-case';
+import { ADDRESS_REPOSITORY } from './domain/repositories/address.repository.interface';
+import { AddressRepository } from './infrastructure/repositories/address.repository';
 import { AuthMapper } from './application/mappers/auth.mapper';
 import { AuthService } from './application/services/auth.service';
 import { SessionService } from './application/services/session.service';
@@ -66,7 +75,7 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     }),
     LoggerModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AddressesController],
   providers: [
     AuthService,
     AuthMapper,
@@ -92,6 +101,13 @@ import { JwtStrategy } from './infrastructure/strategies/jwt.strategy';
     { provide: CODE_GENERATOR, useClass: CodeGeneratorService },
     { provide: EMAIL_SENDER, useClass: EmailSenderService },
     { provide: GOOGLE_TOKEN_VERIFIER, useClass: GoogleTokenVerifierService },
+    AddressesService,
+    AddressMapper,
+    ListAddressesUseCase,
+    CreateAddressUseCase,
+    UpdateAddressUseCase,
+    DeleteAddressUseCase,
+    { provide: ADDRESS_REPOSITORY, useClass: AddressRepository },
     JwtStrategy,
   ],
 })

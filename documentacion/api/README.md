@@ -34,5 +34,9 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 | POST | `/auth/reset-password` | [009](auth/009-post-reset-password.md) | 🔶 backend listo — sin integrar |
 | POST | `/auth/google` | [010](auth/010-post-google.md) | 🔶 backend listo — sin integrar |
 | POST | `/auth/check-reset-code` | [011](auth/011-post-check-reset-code.md) | 🔶 backend listo — sin integrar |
+| GET | `/addresses` | [012](auth/012-get-addresses.md) | 🔶 backend listo — sin integrar |
+| POST | `/addresses` | [013](auth/013-post-addresses.md) | 🔶 backend listo — sin integrar |
+| PATCH | `/addresses/:id` | [014](auth/014-patch-addresses-id.md) | 🔶 backend listo — sin integrar |
+| DELETE | `/addresses/:id` | [015](auth/015-delete-addresses-id.md) | 🔶 backend listo — sin integrar |
 | GET | `/catalog` | [catálogo completo](catalog/001-get-catalog.md) | 🔶 backend listo — sin integrar |
 | GET | `/store/config` | [001](store/001-get-store-config.md) | 🔶 backend listo — sin integrar |

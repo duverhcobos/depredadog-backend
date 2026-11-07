@@ -60,14 +60,17 @@ Direcciones reutilizables del cliente (delivery).
 | `id` | uuid PK | | |
 | `user_id` | uuid FK → `users` ON DELETE CASCADE | NOT NULL | |
 | `label` | varchar(50) | NOT NULL | "Casa", "Trabajo" |
-| `address_line` | varchar(255) | NOT NULL | |
-| `reference` | text | NULL | Indicaciones ("portón verde, 2do piso") |
+| `landmark` | varchar(255) | NOT NULL | Punto de referencia — ES la dirección (§022a: la zona no tiene nomenclatura de calles) |
+| `neighborhood` | text | NULL | Barrio/vereda/sector (§022a) |
+| `type` | enum `address_type` | NOT NULL, default `other` | `home` \| `work` \| `other` — ícono en la app (§022b) |
 | `latitude` | numeric(9,6) | NULL | Opcional, para mapa/delivery |
 | `longitude` | numeric(9,6) | NULL | |
 | `is_default` | boolean | NOT NULL, default false | Máx. una por usuario |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
 Índices: `INDEX(user_id)`, índice parcial `UNIQUE(user_id) WHERE is_default` (una default por usuario).
+
+**Decisión (§014/§022a)**: el esquema evolucionó en la propuesta 014 — `address_line` → `landmark`, `reference` → `neighborhood`, + columna `type`. Borrar una dirección es real (sin soft delete): `orders.address_id` queda `NULL` (`ON DELETE SET NULL`) y la orden conserva su `delivery_address` como snapshot inmutable. Máx. 10 por usuario (regla de aplicación); la primera queda default automática y, si se borra la default, la más antigua la hereda.
 
 ### `devices`
 
@@ -340,7 +343,7 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `customer_id` | uuid FK → `users` | NULL | NULL en presencial (cliente sin cuenta) |
 | `taken_by` | uuid FK → `users` | NULL | Admin que lo registró (presencial) |
 | `table_id` | uuid FK → `tables` | NULL | `dine_in`: mesa asignada por el admin |
-| `address_id` | uuid FK → `addresses` | NULL | `delivery`: dirección elegida del cliente |
+| `address_id` | uuid FK → `addresses` ON DELETE SET NULL | NULL | `delivery`: dirección elegida del cliente — se suelta si se borra (§014), el snapshot está en `delivery_address` |
 | `delivery_address` | text | NULL | Snapshot inmutable de la dirección al pedir |
 | `status` | enum `order_status` | NOT NULL, default `pending` | `pending` → `confirmed` → `preparing` → `done`; `cancelled` en cualquier punto |
 | `subtotal` | numeric(10,2) | NOT NULL | |
