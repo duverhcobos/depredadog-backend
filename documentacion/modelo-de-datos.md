@@ -371,6 +371,8 @@ Constraints/índices (implementado, propuesta 013): `UNIQUE(order_date, order_nu
 | `quantity` | int | NOT NULL | |
 | `line_total` | numeric(10,2) | NOT NULL | (precio + extras) × qty — snapshot |
 | `notes` | text | NULL | Nota del ítem |
+| `product_slug` | varchar(120) | NULL | Snapshot del slug — la app mapea assets por él (§016; NULL en filas previas) |
+| `included_names` | text[] | NOT NULL, default '{}' | Snapshot "Lleva:" — incluidos por defecto menos quitados/reemplazados (§016) |
 
 Índices: `INDEX(order_id)`, `INDEX(product_id)` (reportes "más vendidos").
 
@@ -386,6 +388,8 @@ Modificadores elegidos por ítem — filas hijas, consultables para reportes y c
 | `option_name` | varchar(100) | NOT NULL | Snapshot |
 | `action` | enum `modifier_action` | NOT NULL | `added` \| `removed` ("sin cebolla" = removed) |
 | `price_delta` | numeric(10,2) | NOT NULL, default 0 | Snapshot del extra cobrado |
+| `modifier_group` | varchar(50) | NULL | Snapshot del `modifier_groups.slug` origen — secciona el detalle (§016; NULL en filas previas) |
+| `replaces_option_id` | uuid FK → `modifier_options` | NULL | Solo filas `added` del cambio gratis: el incluido que reemplaza (§016) |
 
 Índices: `INDEX(order_item_id)`, `INDEX(option_id)` (reportes por ingrediente).
 
@@ -399,6 +403,7 @@ Modificadores elegidos por ítem — filas hijas, consultables para reportes y c
 - **Sin propina**. El estado de pago se decide en `payments` (columna aquí vs tabla propia).
 - `order_number` secuencial diario **implementado** (propuesta 013): columna `order_date` + `UNIQUE(order_date, order_number)` — el reset diario quedó por día de negocio en la tz del local.
 - **Teléfonos del pedido** (`orders.contact_phone`, `payments.payer_phone`) — decisión §024: quién recibe vive en la orden (delivery lo exige); quién paga vive en el pago. En efectivo quien recibe = quien paga.
+- **Fidelidad de personalización** (propuesta 016): `product_slug`, `included_names`, `modifier_group` y `replaces_option_id` son snapshots al crear — el detalle del cliente reproduce el carrito idéntico, aunque la carta cambie después. Filas previas quedan NULL/vacías y el consumidor degrada.
 
 ---
 

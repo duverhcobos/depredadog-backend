@@ -4,15 +4,19 @@ export class OrderItemModifierResponseDto {
   optionName!: string;
   action!: string;
   priceDelta!: number;
+  modifierGroup!: string | null;
+  replacesOptionId!: string | null;
 }
 export class OrderItemResponseDto {
   id!: string;
   productId!: string;
   productName!: string;
+  productSlug!: string | null;
   unitPrice!: number;
   quantity!: number;
   lineTotal!: number;
   notes!: string | null;
+  includedNames!: string[];
   modifiers!: OrderItemModifierResponseDto[];
 }
 export class OrderPaymentResponseDto {

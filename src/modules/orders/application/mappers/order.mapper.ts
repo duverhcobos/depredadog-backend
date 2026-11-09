@@ -54,10 +54,12 @@ export class OrderMapper {
     dto.id = i.id;
     dto.productId = i.productId;
     dto.productName = i.productName;
+    dto.productSlug = i.productSlug;
     dto.unitPrice = i.unitPrice;
     dto.quantity = i.quantity;
     dto.lineTotal = i.lineTotal;
     dto.notes = i.notes;
+    dto.includedNames = i.includedNames;
     dto.modifiers = i.modifiers.map((m) => this.toModifierResponse(m));
     return dto;
   }
@@ -71,6 +73,8 @@ export class OrderMapper {
     dto.optionName = m.optionName;
     dto.action = m.action;
     dto.priceDelta = m.priceDelta;
+    dto.modifierGroup = m.modifierGroup;
+    dto.replacesOptionId = m.replacesOptionId;
     return dto;
   }
 

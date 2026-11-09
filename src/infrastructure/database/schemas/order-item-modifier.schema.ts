@@ -29,5 +29,16 @@ export const OrderItemModifierSchema = new EntitySchema<OrderItemModifier>({
       transformer: numeric,
       default: 0,
     },
+    modifierGroup: {
+      name: 'modifier_group',
+      type: 'varchar',
+      length: 50,
+      nullable: true,
+    },
+    replacesOptionId: {
+      name: 'replaces_option_id',
+      type: 'uuid',
+      nullable: true,
+    },
   },
 });

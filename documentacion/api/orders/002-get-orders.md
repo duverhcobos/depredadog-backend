@@ -55,10 +55,12 @@ completos).
           "id": "c6f28e5f-02cb-4635-bbfd-c1e38f4499ab",
           "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
           "productName": "El Cachorro",
+          "productSlug": "el-cachorro",
           "unitPrice": 14000,
           "quantity": 1,
           "lineTotal": 14000,
           "notes": null,
+          "includedNames": ["Pan artesanal", "Salchicha americana"],
           "modifiers": []
         }
       ],
@@ -105,10 +107,12 @@ real del bucket — la app dibuja el paginador con él.
           "id": "5b969156-8ae5-4350-8a41-d2e15b0a5f48",
           "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
           "productName": "El Cachorro",
+          "productSlug": "el-cachorro",
           "unitPrice": 16000,
           "quantity": 1,
           "lineTotal": 16000,
           "notes": null,
+          "includedNames": ["Pan artesanal", "Salchicha americana", "Queso mozzarella"],
           "modifiers": []
         }
       ],

@@ -101,17 +101,21 @@
       "id": "5b969156-8ae5-4350-8a41-d2e15b0a5f48",
       "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
       "productName": "El Cachorro",
+      "productSlug": "el-cachorro",
       "unitPrice": 16000,
       "quantity": 1,
       "lineTotal": 16000,
       "notes": null,
+      "includedNames": ["Pan artesanal", "Salchicha americana", "Queso mozzarella"],
       "modifiers": [
         {
           "id": "ebf32cdf-8114-4851-a75a-59bafc90a2fb",
           "optionId": "03ad6f96-8e46-4b3b-a931-bd91b0079cc7",
           "optionName": "Tocineta",
           "action": "added",
-          "priceDelta": 2000
+          "priceDelta": 2000,
+          "modifierGroup": "ingredients",
+          "replacesOptionId": null
         }
       ]
     }
@@ -149,17 +153,21 @@
       "id": "c6f28e5f-02cb-4635-bbfd-c1e38f4499ab",
       "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
       "productName": "El Cachorro",
+      "productSlug": "el-cachorro",
       "unitPrice": 14000,
       "quantity": 1,
       "lineTotal": 14000,
       "notes": null,
+      "includedNames": ["Pan artesanal", "Salchicha americana"],
       "modifiers": [
         {
           "id": "869eff00-cad6-48ca-9c64-6bffecd26b7f",
           "optionId": "cc5b85d8-c365-4137-b27a-72204af9a133",
           "optionName": "Queso mozzarella",
           "action": "removed",
-          "priceDelta": 0
+          "priceDelta": 0,
+          "modifierGroup": "ingredients",
+          "replacesOptionId": null
         }
       ]
     }

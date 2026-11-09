@@ -31,5 +31,17 @@ export const OrderItemSchema = new EntitySchema<OrderItem>({
       transformer: numeric,
     },
     notes: { type: 'text', nullable: true },
+    productSlug: {
+      name: 'product_slug',
+      type: 'varchar',
+      length: 120,
+      nullable: true,
+    },
+    includedNames: {
+      name: 'included_names',
+      type: 'text',
+      array: true,
+      default: () => "'{}'",
+    },
   },
 });

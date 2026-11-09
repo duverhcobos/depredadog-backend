@@ -59,17 +59,21 @@ El pedido vuelve con `status: "cancelled"`, `cancelReason` lleno y
       "id": "c6f28e5f-02cb-4635-bbfd-c1e38f4499ab",
       "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
       "productName": "El Cachorro",
+      "productSlug": "el-cachorro",
       "unitPrice": 14000,
       "quantity": 1,
       "lineTotal": 14000,
       "notes": null,
+      "includedNames": ["Pan artesanal", "Salchicha americana"],
       "modifiers": [
         {
           "id": "869eff00-cad6-48ca-9c64-6bffecd26b7f",
           "optionId": "cc5b85d8-c365-4137-b27a-72204af9a133",
           "optionName": "Queso mozzarella",
           "action": "removed",
-          "priceDelta": 0
+          "priceDelta": 0,
+          "modifierGroup": "ingredients",
+          "replacesOptionId": null
         }
       ]
     }

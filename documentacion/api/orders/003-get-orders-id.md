@@ -45,17 +45,21 @@
       "id": "c6f28e5f-02cb-4635-bbfd-c1e38f4499ab",
       "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
       "productName": "El Cachorro",
+      "productSlug": "el-cachorro",
       "unitPrice": 14000,
       "quantity": 1,
       "lineTotal": 14000,
       "notes": null,
+      "includedNames": ["Pan artesanal", "Salchicha americana"],
       "modifiers": [
         {
           "id": "869eff00-cad6-48ca-9c64-6bffecd26b7f",
           "optionId": "cc5b85d8-c365-4137-b27a-72204af9a133",
           "optionName": "Queso mozzarella",
           "action": "removed",
-          "priceDelta": 0
+          "priceDelta": 0,
+          "modifierGroup": "ingredients",
+          "replacesOptionId": null
         }
       ]
     }
@@ -89,3 +93,9 @@
   propósito (`[]`); la pantalla de detalle usa este endpoint.
 - `deliveryAddress`/`deliveryLocationLink` son snapshots inmutables —
   si el cliente borra la dirección guardada, el pedido la conserva.
+- **Fidelidad de personalización (§016)**: `productSlug`,
+  `includedNames`, `modifierGroup` y `replacesOptionId` son snapshots
+  de creación — reproducen la personalización del carrito ("Lleva:",
+  secciones por grupo, cambio gratis emparejado). Pedidos anteriores
+  a §016 devuelven `null`/`[]` en estos campos — el consumidor salta
+  la sección que no puede pintar.

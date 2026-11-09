@@ -240,12 +240,20 @@ describe('/orders (e2e)', () => {
     const items = body.items as Record<string, unknown>[];
     expect(items).toHaveLength(1);
     expect(items[0].productName).toBe('El Cachorro');
+    // Snapshots §016 — la app pinta foto y "Lleva:" con esto.
+    expect(items[0].productSlug).toBe('el-cachorro');
+    expect(items[0].includedNames).toEqual([
+      'Queso mozzarella',
+      'Salchicha',
+    ]);
     expect(items[0].unitPrice).toBe(16000);
     const mods = items[0].modifiers as Record<string, unknown>[];
     expect(mods).toHaveLength(1);
     expect(mods[0].optionName).toBe('Tocineta');
     expect(mods[0].action).toBe('added');
     expect(mods[0].priceDelta).toBe(2000);
+    expect(mods[0].modifierGroup).toBe('ingredients');
+    expect(mods[0].replacesOptionId).toBeNull();
     const payment = body.payment as Record<string, unknown>;
     expect(payment.method).toBe('transfer');
     expect(payment.status).toBe('pending');
@@ -547,9 +555,17 @@ describe('/orders (e2e)', () => {
     const detail = res.body as Record<string, unknown>;
     expect(detail.id).toBe(created.id);
     const items = detail.items as Record<string, unknown>[];
+    // El detalle repite los snapshots §016 del POST.
+    expect(items[0].productSlug).toBe('el-cachorro');
+    expect(items[0].includedNames).toEqual([
+      'Queso mozzarella',
+      'Salchicha',
+    ]);
     const mods = items[0].modifiers as Record<string, unknown>[];
     expect(mods).toHaveLength(1);
     expect(mods[0].optionName).toBe('Tocineta');
+    expect(mods[0].modifierGroup).toBe('ingredients');
+    expect(mods[0].replacesOptionId).toBeNull();
 
     // IDOR: orden de otro usuario responde 404 igual que inexistente.
     const emailB = 'orders-b@test.com';
@@ -563,6 +579,62 @@ describe('/orders (e2e)', () => {
       .get(`/orders/${randomUUID()}`)
       .set(auth(tokens.accessToken))
       .expect(404);
+  });
+
+  it('POST reemplazo gratis → added delta 0 con replacesOptionId; GET :id lo repite (§016)', async () => {
+    const body = await postOrder({
+      serviceType: 'pickup',
+      items: [
+        {
+          productId: product.id,
+          quantity: 1,
+          modifiers: [
+            { optionId: mozzarella.id, action: 'removed' },
+            {
+              optionId: tocineta.id,
+              action: 'added',
+              replacesOptionId: mozzarella.id,
+            },
+          ],
+        },
+      ],
+      paymentMethod: 'transfer',
+      payerPhone: '3001234567',
+    });
+
+    const items = body.items as Record<string, unknown>[];
+    expect(items[0].productSlug).toBe('el-cachorro');
+    // "Lleva:" efectivo — mozzarella quitada ya no aparece.
+    expect(items[0].includedNames).toEqual(['Salchicha']);
+    expect(items[0].unitPrice).toBe(14000);
+    const mods = items[0].modifiers as Record<string, unknown>[];
+    const removed = mods.find((m) => m.action === 'removed')!;
+    const added = mods.find((m) => m.action === 'added')!;
+    expect(removed.optionId).toBe(mozzarella.id);
+    expect(removed.modifierGroup).toBe('ingredients');
+    expect(removed.replacesOptionId).toBeNull();
+    expect(added.optionId).toBe(tocineta.id);
+    expect(added.priceDelta).toBe(0);
+    expect(added.modifierGroup).toBe('ingredients');
+    // Empareja el par removed→added del cambio gratis.
+    expect(added.replacesOptionId).toBe(mozzarella.id);
+
+    // GET :id repite los mismos snapshots.
+    const res = await request(server())
+      .get(`/orders/${body.id as string}`)
+      .set(auth(tokens.accessToken))
+      .expect(200);
+    const detailItems = (res.body as Record<string, unknown>)
+      .items as Record<string, unknown>[];
+    expect(detailItems[0].productSlug).toBe('el-cachorro');
+    expect(detailItems[0].includedNames).toEqual(['Salchicha']);
+    const detailMods = detailItems[0].modifiers as Record<string, unknown>[];
+    expect(
+      detailMods.find((m) => m.action === 'added')!.replacesOptionId,
+    ).toBe(mozzarella.id);
+    expect(
+      detailMods.find((m) => m.action === 'removed')!.replacesOptionId,
+    ).toBeNull();
   });
 
   it('POST /orders/:id/cancel en pending → cancelled + payment failed; recancel → 409; ajeno → 404', async () => {

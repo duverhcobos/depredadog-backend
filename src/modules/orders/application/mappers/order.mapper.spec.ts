@@ -36,12 +36,16 @@ describe('OrderMapper', () => {
     m.optionName = 'Tocineta';
     m.action = ModifierAction.ADDED;
     m.priceDelta = 2000;
+    m.modifierGroup = 'ingredients';
+    m.replacesOptionId = 'opt9';
 
     const i = new OrderItem();
     i.id = 'i1';
     i.orderId = 'o1';
     i.productId = 'p1';
     i.productName = 'El Cachorro';
+    i.productSlug = 'el-cachorro';
+    i.includedNames = ['Pan', 'Salchicha'];
     i.unitPrice = 16000;
     i.quantity = 1;
     i.lineTotal = 16000;
@@ -78,6 +82,8 @@ describe('OrderMapper', () => {
     expect(dto.items).toHaveLength(1);
     const item = dto.items[0];
     expect(item.productName).toBe('El Cachorro');
+    expect(item.productSlug).toBe('el-cachorro');
+    expect(item.includedNames).toEqual(['Pan', 'Salchicha']);
     expect(item.unitPrice).toBe(16000);
     expect(item.lineTotal).toBe(16000);
     expect(item.notes).toBeNull();
@@ -85,6 +91,8 @@ describe('OrderMapper', () => {
     expect(item.modifiers[0].optionName).toBe('Tocineta');
     expect(item.modifiers[0].action).toBe('added');
     expect(item.modifiers[0].priceDelta).toBe(2000);
+    expect(item.modifiers[0].modifierGroup).toBe('ingredients');
+    expect(item.modifiers[0].replacesOptionId).toBe('opt9');
 
     expect(dto.payment).not.toBeNull();
     expect(dto.payment!.method).toBe('transfer');

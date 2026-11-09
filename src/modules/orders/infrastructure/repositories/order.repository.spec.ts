@@ -250,6 +250,43 @@ describe('OrderRepository', () => {
     expect(found?.payment).toBe(payment);
   });
 
+  it('round-trip §016: productSlug/includedNames/modifierGroup/replacesOptionId persisten y vuelven', async () => {
+    const order = newOrder();
+    const item = order.items[0];
+    item.id = 'i1';
+    item.productSlug = 'el-cachorro';
+    item.includedNames = ['Queso mozzarella', 'Salchicha'];
+    const mod = item.modifiers[0];
+    mod.orderItemId = 'i1';
+    mod.modifierGroup = 'ingredients';
+    mod.replacesOptionId = 'opt-removed';
+
+    const saved = await repo.createAggregate(order);
+    expect(saved.items[0].productSlug).toBe('el-cachorro');
+    expect(saved.items[0].includedNames).toEqual([
+      'Queso mozzarella',
+      'Salchicha',
+    ]);
+    expect(saved.items[0].modifiers[0].modifierGroup).toBe('ingredients');
+    expect(saved.items[0].modifiers[0].replacesOptionId).toBe('opt-removed');
+
+    // ...y vuelven por el detalle (findByIdForCustomer carga modifiers).
+    orm.findOne.mockResolvedValue(Object.assign(new Order(), { id: 'o1' }));
+    item.orderId = 'o1';
+    items.find.mockResolvedValue([item]);
+    modifiers.find.mockResolvedValue([mod]);
+    payments.find.mockResolvedValue([]);
+
+    const found = await repo.findByIdForCustomer('o1', 'u1');
+    expect(found?.items[0].productSlug).toBe('el-cachorro');
+    expect(found?.items[0].includedNames).toEqual([
+      'Queso mozzarella',
+      'Salchicha',
+    ]);
+    expect(found?.items[0].modifiers[0].modifierGroup).toBe('ingredients');
+    expect(found?.items[0].modifiers[0].replacesOptionId).toBe('opt-removed');
+  });
+
   it('saveAggregate guarda orden + payment en una tx', async () => {
     const order = newOrder();
     order.status = OrderStatus.CANCELLED;

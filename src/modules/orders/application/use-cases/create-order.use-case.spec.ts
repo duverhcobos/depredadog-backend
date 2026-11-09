@@ -688,4 +688,137 @@ describe('CreateOrderUseCase', () => {
     );
     expect(order.notes).toBe('Timbre roto');
   });
+
+  it('snapshots §016: productSlug del producto; ítem sin personalizar lleva todos los incluidos', async () => {
+    const pan = option('o-pan', {
+      name: 'Pan',
+      includedByDefault: true,
+      isRemovable: false,
+    });
+    const queso = option('o-queso', {
+      name: 'Queso mozzarella',
+      includedByDefault: true,
+    });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1', { slug: 'el-cachorro' }), [pan, queso]),
+    ]);
+    const order = await useCase.execute(base);
+    expect(order.items[0].productSlug).toBe('el-cachorro');
+    expect(order.items[0].includedNames).toEqual(['Pan', 'Queso mozzarella']);
+  });
+
+  it('snapshots §016: includedNames = incluidos menos quitados/reemplazados', async () => {
+    const pan = option('o-pan', {
+      name: 'Pan',
+      includedByDefault: true,
+      isRemovable: false,
+    });
+    const queso = option('o-queso', {
+      name: 'Queso mozzarella',
+      includedByDefault: true,
+      isReplaceable: true,
+      isAvailable: false,
+    });
+    const top = option('o-top', {
+      name: 'Tocineta',
+      extraPrice: 2000,
+      isReplacementEligible: true,
+    });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1'), [pan, queso, top]),
+    ]);
+    const order = await useCase.execute({
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [
+            { optionId: 'o-queso', action: 'removed' },
+            {
+              optionId: 'o-top',
+              action: 'added',
+              replacesOptionId: 'o-queso',
+            },
+          ],
+        },
+      ],
+    });
+    expect(order.items[0].includedNames).toEqual(['Pan']);
+  });
+
+  it('snapshots §016: modifierGroup por fila; replacesOptionId solo en el added del cambio gratis', async () => {
+    const queso = option('o-queso', {
+      name: 'Queso mozzarella',
+      includedByDefault: true,
+      isReplaceable: true,
+      isAvailable: false,
+    });
+    const top = option('o-top', {
+      name: 'Tocineta',
+      extraPrice: 2000,
+      isReplacementEligible: true,
+    });
+    const extra = option('o-extra', { name: 'Piña', extraPrice: 2500 });
+    // Segundo grupo — el slug de la fila sale del grupo, no de la opción.
+    const g2 = new ModifierGroup();
+    g2.id = 'g2';
+    g2.slug = 'toppings';
+    g2.name = 'Toppings';
+    g2.options = [extra];
+    const p = withGroup(product('p1'), [queso, top]);
+    p.modifierGroups.push(g2);
+    catalog.getOrderableProducts.mockResolvedValue([p]);
+    const order = await useCase.execute({
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [
+            { optionId: 'o-queso', action: 'removed' },
+            {
+              optionId: 'o-top',
+              action: 'added',
+              replacesOptionId: 'o-queso',
+            },
+            { optionId: 'o-extra', action: 'added' },
+          ],
+        },
+      ],
+    });
+    const [removed, replaced, paid] = order.items[0].modifiers;
+    expect(removed.modifierGroup).toBe('ingredients');
+    expect(removed.replacesOptionId).toBeNull();
+    expect(replaced.modifierGroup).toBe('ingredients');
+    expect(replaced.replacesOptionId).toBe('o-queso');
+    expect(paid.modifierGroup).toBe('toppings');
+    expect(paid.replacesOptionId).toBeNull();
+    // El reemplazo salió gratis; el extra pagado sí suma.
+    expect(order.items[0].unitPrice).toBe(14000 + 2500);
+  });
+
+  it('includedNames suma incluidos de TODOS los grupos, no solo ingredients', async () => {
+    const pan = option('o-pan', { name: 'Pan', includedByDefault: true });
+    const toppingIncluido = option('o-top-inc', {
+      name: 'Tocineta caramelizada',
+      includedByDefault: true,
+    });
+    const g2 = new ModifierGroup();
+    g2.id = 'g2';
+    g2.slug = 'toppings';
+    g2.name = 'Toppings';
+    g2.options = [toppingIncluido];
+    const p = withGroup(product('p1'), [pan]);
+    p.modifierGroups.push(g2);
+    catalog.getOrderableProducts.mockResolvedValue([p]);
+    const order = await useCase.execute({
+      ...base,
+      items: [{ productId: 'p1', quantity: 1, modifiers: [] }],
+    });
+    expect(order.items[0].includedNames).toEqual([
+      'Pan',
+      'Tocineta caramelizada',
+    ]);
+  });
 });

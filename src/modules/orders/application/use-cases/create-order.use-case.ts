@@ -65,6 +65,7 @@ export interface CreateOrderCommand {
 interface OrderableOption {
   opt: ModifierOption;
   includedByDefault: boolean;
+  groupSlug: string;
 }
 
 @Injectable()
@@ -232,7 +233,7 @@ export class CreateOrderUseCase {
               `option ${entry.opt.name} cannot be removed`,
             );
           }
-          mods.push(this.modifier(entry.opt, 'removed', 0));
+          mods.push(this.modifier(entry, 'removed', 0));
           continue;
         }
         // added — ¿extra cobrado o reemplazo gratis (§021)?
@@ -262,7 +263,7 @@ export class CreateOrderUseCase {
           consumedReplacements.add(m.replacesOptionId);
           delta = 0;
         }
-        mods.push(this.modifier(entry.opt, 'added', delta));
+        mods.push(this.modifier(entry, 'added', delta, m.replacesOptionId));
       }
       const unit =
         product.basePrice +
@@ -274,6 +275,8 @@ export class CreateOrderUseCase {
       const item = new OrderItem();
       item.productId = product.id;
       item.productName = product.name;
+      item.productSlug = product.slug;
+      item.includedNames = this.effectiveIncluded(options, dto);
       item.unitPrice = unit;
       item.quantity = dto.quantity;
       item.lineTotal = unit * dto.quantity;
@@ -293,22 +296,43 @@ export class CreateOrderUseCase {
         options.set(opt.id, {
           opt,
           includedByDefault: opt.includedByDefault,
+          groupSlug: g.slug,
         });
       }
     }
     return options;
   }
 
+  // "Lleva:" efectivo — incluidos por defecto de TODOS los grupos
+  // menos los quitados/reemplazados (el replaced siempre trae fila
+  // removed — validado arriba — así que un solo set alcanza).
+  private effectiveIncluded(
+    options: Map<string, OrderableOption>,
+    dto: CreateOrderItemCommand,
+  ): string[] {
+    const removed = new Set(
+      dto.modifiers.filter((m) => m.action === 'removed').map((m) => m.optionId),
+    );
+    const names: string[] = [];
+    for (const { opt, includedByDefault } of options.values()) {
+      if (includedByDefault && !removed.has(opt.id)) names.push(opt.name);
+    }
+    return names;
+  }
+
   private modifier(
-    opt: ModifierOption,
+    entry: OrderableOption,
     action: 'added' | 'removed',
     delta: number,
+    replacesOptionId?: string,
   ): OrderItemModifier {
     const m = new OrderItemModifier();
-    m.optionId = opt.id;
-    m.optionName = opt.name;
+    m.optionId = entry.opt.id;
+    m.optionName = entry.opt.name;
     m.action = action as ModifierAction;
     m.priceDelta = delta;
+    m.modifierGroup = entry.groupSlug;
+    m.replacesOptionId = replacesOptionId ?? null;
     return m;
   }
 

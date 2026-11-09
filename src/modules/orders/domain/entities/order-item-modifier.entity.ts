@@ -8,4 +8,10 @@ export class OrderItemModifier {
   optionName!: string;
   action!: ModifierAction;
   priceDelta = 0;
+  /** Snapshot del slug del grupo origen (§016) — la app secciona el
+   *  detalle con él; null en filas previas a §016. */
+  modifierGroup: string | null = null;
+  /** Solo en la fila added del cambio gratis (§016): el incluido
+   *  agotado que esta opción reemplaza — empareja el par removed→added. */
+  replacesOptionId: string | null = null;
 }
