@@ -223,24 +223,33 @@ export class OrderRepository implements IOrderRepository {
   // resolvePaymentAggregate — payments→orders siempre, así los dos
   // flujos no se bloquean entre sí: quien gana el claim del payment
   // posee la transición). UPDATE condicional en ambas filas.
-  cancelPendingAggregate(order: Order): Promise<boolean> {
-    return this.orm.manager.transaction(async (em) => {
-      if (order.payment) {
-        // affected=0 es OK — el pago ya resuelto no se toca: un
-        // 'paid' nunca revierte a 'failed' por un cancel tardío.
-        await em.update(
-          Payment,
-          { id: order.payment.id, status: PaymentStatus.PENDING },
-          { status: order.payment.status },
+  async cancelPendingAggregate(order: Order): Promise<boolean> {
+    try {
+      return await this.orm.manager.transaction(async (em) => {
+        if (order.payment) {
+          // affected=0 es OK — el pago ya resuelto no se toca: un
+          // 'paid' nunca revierte a 'failed' por un cancel tardío.
+          await em.update(
+            Payment,
+            { id: order.payment.id, status: PaymentStatus.PENDING },
+            { status: order.payment.status },
+          );
+        }
+        const res = await em.update(
+          Order,
+          { id: order.id, status: OrderStatus.PENDING },
+          { status: order.status, cancelReason: order.cancelReason },
         );
-      }
-      const res = await em.update(
-        Order,
-        { id: order.id, status: OrderStatus.PENDING },
-        { status: order.status, cancelReason: order.cancelReason },
-      );
-      return (res.affected ?? 0) > 0;
-    });
+        // Si la orden ya se movió, el centinela revierte TAMBIÉN el
+        // kill del payment — un `return false` acá commitearía el
+        // pago muerto dejando confirmed+failed (callejón sin salida).
+        if ((res.affected ?? 0) === 0) throw new AggregateLostError();
+        return true;
+      });
+    } catch (e) {
+      if (e instanceof AggregateLostError) return false;
+      throw e;
+    }
   }
 
   // Claim del webhook: UPDATE payments WHERE status='pending' es la
@@ -249,31 +258,154 @@ export class OrderRepository implements IOrderRepository {
   // caller re-lee para responder idempotente. Con el claim ganado,
   // la orden se mueve solo si sigue pending — jamás resucita una
   // cancelada.
-  resolvePaymentAggregate(order: Order): Promise<Order | null> {
-    return this.orm.manager.transaction(async (em) => {
-      const payment = order.payment!;
-      const claim = await em.update(
-        Payment,
-        { id: payment.id, status: PaymentStatus.PENDING },
-        {
-          status: payment.status,
-          confirmedAt: payment.confirmedAt,
-          // QueryDeepPartialEntity no acepta Record plano en jsonb —
-          // el cast indexado deja el tipo exacto del partial.
-          providerPayload:
-            payment.providerPayload as QueryDeepPartialEntity<Payment>['providerPayload'],
-        },
-      );
-      if (claim.affected === 0) return null;
-      await em.update(
-        Order,
-        { id: order.id, status: OrderStatus.PENDING },
-        { status: order.status, cancelReason: order.cancelReason },
-      );
-      return order;
-    });
+  async resolvePaymentAggregate(order: Order): Promise<Order | null> {
+    try {
+      return await this.orm.manager.transaction(async (em) => {
+        const payment = order.payment!;
+        const claim = await em.update(
+          Payment,
+          { id: payment.id, status: PaymentStatus.PENDING },
+          {
+            status: payment.status,
+            confirmedAt: payment.confirmedAt,
+            // QueryDeepPartialEntity no acepta Record plano en jsonb —
+            // el cast indexado deja el tipo exacto del partial.
+            providerPayload:
+              payment.providerPayload as QueryDeepPartialEntity<Payment>['providerPayload'],
+          },
+        );
+        if (claim.affected === 0) return null;
+        const res = await em.update(
+          Order,
+          { id: order.id, status: OrderStatus.PENDING },
+          { status: order.status, cancelReason: order.cancelReason },
+        );
+        // Defensivo: la orden solo pudo moverse por un flujo que
+        // primero claimea el payment — y el claim es nuestro. Si aún
+        // así llega un 0, revertir TODO (claim incluido) es mejor que
+        // un payment resuelto sobre una orden que no transicionó.
+        if ((res.affected ?? 0) === 0) throw new AggregateLostError();
+        return order;
+      });
+    } catch (e) {
+      if (e instanceof AggregateLostError) return null;
+      throw e;
+    }
+  }
+
+  // Cola del dueño — misma forma que findByCustomer sin customerId
+  // (las presenciales tienen customer_id NULL y aparecen igual).
+  // La cocina atiende en orden de llegada: active por createdAt ASC;
+  // history DESC paginado igual que el listado del cliente.
+  async findForAdmin(
+    bucket: 'active' | 'history',
+    page: number,
+    limit: number,
+  ): Promise<OrderListPage> {
+    const where: FindOptionsWhere<Order> = {
+      status: In(bucket === 'active' ? ACTIVE_STATUSES : HISTORY_STATUSES),
+    };
+    let orders: Order[];
+    let total: number;
+    if (bucket === 'active') {
+      orders = await this.orm.find({
+        where,
+        order: { createdAt: 'ASC' },
+      });
+      total = orders.length;
+    } else {
+      [orders, total] = await this.orm.findAndCount({
+        where,
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+    }
+    if (orders.length === 0) return { items: [], total };
+    await this.attachItemsAndPayments(orders);
+    return { items: orders, total };
+  }
+
+  // Detalle admin: id solo (sin filtro de cliente — el dueño ve
+  // cualquier orden) con ítems + modifiers: la comanda completa.
+  async findById(id: string): Promise<Order | null> {
+    const order = await this.orm.findOne({ where: { id } });
+    if (!order) return null;
+    await this.attachItemsAndPayments([order], true);
+    return order;
+  }
+
+  // Transición admin atómica: order.status llega SIN mutar — es la
+  // guarda del WHERE (affected=0 → alguien movió la orden entre el
+  // read del use-case y este write → false → 409). Si el agregado
+  // trae el payment mutado a 'failed' (cancel del dueño), el pago
+  // pendiente muere primero con el mismo claim condicional que
+  // cancelPendingAggregate — orden de locks payments→orders siempre.
+  async transitionStatus(order: Order, to: OrderStatus): Promise<boolean> {
+    try {
+      return await this.orm.manager.transaction(async (em) => {
+        if (order.payment?.status === PaymentStatus.FAILED) {
+          await em.update(
+            Payment,
+            { id: order.payment.id, status: PaymentStatus.PENDING },
+            { status: PaymentStatus.FAILED },
+          );
+        }
+        const res = await em.update(
+          Order,
+          { id: order.id, status: order.status },
+          { status: to, cancelReason: order.cancelReason },
+        );
+        // Carrera perdida (otro admin/webhook movió la orden): el
+        // centinela revierte también el kill del payment — sino
+        // quedaría confirmed+failed, un estado sin salida por API.
+        if ((res.affected ?? 0) === 0) throw new AggregateLostError();
+        return true;
+      });
+    } catch (e) {
+      if (e instanceof AggregateLostError) return false;
+      throw e;
+    }
+  }
+
+  // Claim del cobro manual: un solo UPDATE condicional es atómico por
+  // sí solo (un pago vivo por orden — índice parcial). affected=0 →
+  // otro resolvedor ganó (webhook, doble tap del dueño) → false.
+  async confirmPayment(orderId: string, adminId: string): Promise<boolean> {
+    const res = await this.payments.update(
+      { orderId, status: PaymentStatus.PENDING },
+      {
+        status: PaymentStatus.PAID,
+        confirmedBy: adminId,
+        confirmedAt: new Date(),
+      },
+    );
+    return (res.affected ?? 0) > 0;
+  }
+
+  // Mesas ocupadas: pedido dine_in vivo por mesa → tableId → su
+  // orderNumber (el menor — uno solo debería haber por el índice
+  // parcial "mesa ocupada", el MIN es defensivo).
+  async findActiveTableIds(): Promise<Map<string, number>> {
+    const rows = await this.orm.query<{ table_id: string; n: number }[]>(
+      `SELECT table_id, MIN(order_number) AS n
+       FROM orders
+       WHERE service_type = 'dine_in'
+         AND status IN ('pending', 'confirmed', 'preparing')
+         AND table_id IS NOT NULL
+       GROUP BY table_id`,
+    );
+    return new Map(rows.map((r) => [r.table_id, Number(r.n)]));
   }
 }
+
+// Centinela de rollback de los agregados: si el UPDATE de la orden
+// pierde la carrera (affected=0), lanzarlo dentro de la tx revierte
+// también el write previo sobre el payment. `return false` plano
+// commitearía el payment muerto y dejaría el par orden/pago
+// inconsistente (IMPORTANTE-1 de la auditoría §019). Error propio —
+// eslint exige instancias de Error en `throw`.
+class AggregateLostError extends Error {}
 
 // 23505 = unique_violation de Postgres; el driver expone `code` y
 // `constraint` (nombre de la restricción violada).

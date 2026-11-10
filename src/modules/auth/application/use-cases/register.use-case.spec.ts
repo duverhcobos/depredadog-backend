@@ -43,6 +43,7 @@ describe('RegisterUseCase', () => {
       findByEmail: jest.fn(),
       findByGoogleId: jest.fn(),
       findByReferralCode: jest.fn(),
+      findNamesByIds: jest.fn(),
       save: jest.fn(),
     };
     devices = { findByUserAndFingerprint: jest.fn(), touch: jest.fn() };

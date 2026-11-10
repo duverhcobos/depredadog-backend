@@ -6,12 +6,6 @@ import {
   type IAddressRepository,
   ADDRESS_REPOSITORY,
 } from '../../../auth/domain/repositories/address.repository.interface';
-import { ModifierOption } from '../../../catalog/domain/entities/modifier-option.entity';
-import { Product } from '../../../catalog/domain/entities/product.entity';
-import {
-  type ICatalogRepository,
-  CATALOG_REPOSITORY,
-} from '../../../catalog/domain/repositories/catalog.repository.interface';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { PaymentMethod } from '../../../payments/domain/enums/payment-method.enum';
 import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
@@ -25,19 +19,16 @@ import {
 } from '../../../store/domain/repositories/store.repository.interface';
 import { StoreSchedule } from '../../../store/domain/services/store-schedule.service';
 import { Order } from '../../domain/entities/order.entity';
-import { OrderItem } from '../../domain/entities/order-item.entity';
-import { OrderItemModifier } from '../../domain/entities/order-item-modifier.entity';
-import { ModifierAction } from '../../domain/enums/modifier-action.enum';
 import { OrderChannel } from '../../domain/enums/order-channel.enum';
 import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
 import { InvalidOrderDataException } from '../../domain/exceptions/invalid-order-data.exception';
 import { MinOrderAmountException } from '../../domain/exceptions/min-order-amount.exception';
-import { OrderCatalogViolationException } from '../../domain/exceptions/order-catalog-violation.exception';
 import { StoreClosedException } from '../../domain/exceptions/store-closed.exception';
 import {
   type IOrderRepository,
   ORDER_REPOSITORY,
 } from '../../domain/repositories/order.repository.interface';
+import { OrderItemsBuilder } from '../../domain/services/order-items-builder.service';
 
 export interface CreateOrderItemModifierCommand {
   optionId: string;
@@ -66,12 +57,6 @@ export interface CreateOrderCommand {
   clientRequestId?: string;
 }
 
-interface OrderableOption {
-  opt: ModifierOption;
-  includedByDefault: boolean;
-  groupSlug: string;
-}
-
 @Injectable()
 export class CreateOrderUseCase {
   constructor(
@@ -79,12 +64,11 @@ export class CreateOrderUseCase {
     private readonly orders: IOrderRepository,
     @Inject(PAYMENT_GATEWAY)
     private readonly gateway: IPaymentGateway,
-    @Inject(CATALOG_REPOSITORY)
-    private readonly catalog: ICatalogRepository,
     @Inject(STORE_REPOSITORY)
     private readonly store: IStoreRepository,
     @Inject(ADDRESS_REPOSITORY)
     private readonly addresses: IAddressRepository,
+    private readonly itemsBuilder: OrderItemsBuilder,
     private readonly config: ConfigService,
   ) {}
 
@@ -109,11 +93,9 @@ export class CreateOrderUseCase {
     if (!settings || !StoreSchedule.isOpenNow(hours, now, tz)) {
       throw new StoreClosedException();
     }
-    // 4. Revalidación de catálogo — precios SIEMPRE de la BD.
-    const menu = await this.catalog.getOrderableProducts(
-      cmd.items.map((i) => i.productId),
-    );
-    const items = this.buildValidatedItems(cmd.items, menu);
+    // 4. Revalidación de catálogo — precios SIEMPRE de la BD (la
+    // comparte con el canal presencial vía OrderItemsBuilder).
+    const items = await this.itemsBuilder.build(cmd.items);
     const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
     // 5. Reglas de servicio/pago y snapshots.
     const deliveryFee =
@@ -188,159 +170,6 @@ export class CreateOrderUseCase {
         'delivery fields do not apply to pickup',
       );
     }
-  }
-
-  // Corazón de la revalidación — por cada ítem del payload (nunca se
-  // confía en precios del cliente):
-  private buildValidatedItems(
-    dtos: CreateOrderItemCommand[],
-    menu: Product[],
-  ): OrderItem[] {
-    const byId = new Map(menu.map((p) => [p.id, p]));
-    const items: OrderItem[] = [];
-    for (const dto of dtos) {
-      const product = byId.get(dto.productId);
-      if (!product || !product.isAvailable) {
-        throw new OrderCatalogViolationException(
-          `product ${dto.productId} unavailable`,
-        );
-      }
-      const options = this.flattenOptions(product);
-      // Una opción incluida ESENCIAL agotada agota el producto (§010/011).
-      if (
-        [...options.values()].some(
-          (o) => o.includedByDefault && o.opt.isEssential && !o.opt.isAvailable,
-        )
-      ) {
-        throw new OrderCatalogViolationException(
-          `product ${product.name} unavailable (essential out)`,
-        );
-      }
-      const seen = new Set<string>();
-      // Un removed solo financia UN reemplazo gratis — sin este set,
-      // N filas added podrían reclamar la misma opción y salir todas
-      // con delta 0 (bypass de precio).
-      const consumedReplacements = new Set<string>();
-      const mods: OrderItemModifier[] = [];
-      for (const m of dto.modifiers) {
-        if (seen.has(m.optionId)) {
-          throw new OrderCatalogViolationException('duplicate modifier');
-        }
-        seen.add(m.optionId);
-        const entry = options.get(m.optionId);
-        if (!entry) {
-          throw new OrderCatalogViolationException(
-            `option ${m.optionId} not for product`,
-          );
-        }
-        if (m.action === 'removed') {
-          if (!entry.includedByDefault || !entry.opt.isRemovable) {
-            throw new OrderCatalogViolationException(
-              `option ${entry.opt.name} cannot be removed`,
-            );
-          }
-          mods.push(this.modifier(entry, 'removed', 0));
-          continue;
-        }
-        // added — ¿extra cobrado o reemplazo gratis (§021)?
-        if (!entry.opt.isAvailable) {
-          throw new OrderCatalogViolationException(
-            `option ${entry.opt.name} unavailable`,
-          );
-        }
-        let delta = entry.opt.extraPrice;
-        if (m.replacesOptionId) {
-          const replaced = options.get(m.replacesOptionId);
-          const hasRemovedRow = dto.modifiers.some(
-            (x) => x.optionId === m.replacesOptionId && x.action === 'removed',
-          );
-          const ok =
-            replaced?.includedByDefault &&
-            replaced.opt.isReplaceable &&
-            entry.opt.isReplacementEligible &&
-            hasRemovedRow &&
-            !consumedReplacements.has(m.replacesOptionId);
-          if (!ok) {
-            throw new OrderCatalogViolationException(
-              `invalid free replacement of ${entry.opt.name}`,
-            );
-          }
-          consumedReplacements.add(m.replacesOptionId);
-          delta = 0;
-        }
-        mods.push(this.modifier(entry, 'added', delta, m.replacesOptionId));
-      }
-      const unit =
-        product.basePrice +
-        mods
-          .filter((m) => m.action === ModifierAction.ADDED)
-          .reduce((s, m) => s + m.priceDelta, 0);
-      // OrderItem con snapshots — el producto puede renombrarse o
-      // cambiar de precio después.
-      const item = new OrderItem();
-      item.productId = product.id;
-      item.productName = product.name;
-      item.productSlug = product.slug;
-      item.includedNames = this.effectiveIncluded(options, dto);
-      item.unitPrice = unit;
-      item.quantity = dto.quantity;
-      item.lineTotal = unit * dto.quantity;
-      item.notes = dto.notes?.trim() || null;
-      item.modifiers = mods;
-      items.push(item);
-    }
-    return items;
-  }
-
-  // {optionId → {opt, includedByDefault}} aplanado de todos los grupos
-  // enlazados del producto.
-  private flattenOptions(product: Product): Map<string, OrderableOption> {
-    const options = new Map<string, OrderableOption>();
-    for (const g of product.modifierGroups) {
-      for (const opt of g.options) {
-        options.set(opt.id, {
-          opt,
-          includedByDefault: opt.includedByDefault,
-          groupSlug: g.slug,
-        });
-      }
-    }
-    return options;
-  }
-
-  // "Lleva:" efectivo — incluidos por defecto de TODOS los grupos
-  // menos los quitados/reemplazados (el replaced siempre trae fila
-  // removed — validado arriba — así que un solo set alcanza).
-  private effectiveIncluded(
-    options: Map<string, OrderableOption>,
-    dto: CreateOrderItemCommand,
-  ): string[] {
-    const removed = new Set(
-      dto.modifiers
-        .filter((m) => m.action === 'removed')
-        .map((m) => m.optionId),
-    );
-    const names: string[] = [];
-    for (const { opt, includedByDefault } of options.values()) {
-      if (includedByDefault && !removed.has(opt.id)) names.push(opt.name);
-    }
-    return names;
-  }
-
-  private modifier(
-    entry: OrderableOption,
-    action: 'added' | 'removed',
-    delta: number,
-    replacesOptionId?: string,
-  ): OrderItemModifier {
-    const m = new OrderItemModifier();
-    m.optionId = entry.opt.id;
-    m.optionName = entry.opt.name;
-    m.action = action as ModifierAction;
-    m.priceDelta = delta;
-    m.modifierGroup = entry.groupSlug;
-    m.replacesOptionId = replacesOptionId ?? null;
-    return m;
   }
 
   private async fillDeliverySnapshot(

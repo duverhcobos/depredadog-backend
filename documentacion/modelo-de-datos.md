@@ -347,7 +347,7 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `delivery_address` | text | NULL | Snapshot inmutable de la dirección al pedir |
 | `delivery_location_link` | text | NULL | Link de ubicación (pin de Google) que manda el cliente en delivery — solo lo ve el repartidor |
 | `client_request_id` | uuid | NULL | Idempotency key que genera la app por pedido — `UNIQUE(customer_id, client_request_id)` parcial evita dobles POST |
-| `status` | enum `order_status` | NOT NULL, default `pending` | `pending` → `confirmed` → `preparing` → `done`; `cancelled` en cualquier punto |
+| `status` | enum `order_status` | NOT NULL, default `pending` | `pending` → `confirmed` → `done`; `cancelled` en cualquier punto. `preparing` existe en el enum como reserva (cocina dedicada futura) pero ninguna transición lo produce |
 | `subtotal` | numeric(10,2) | NOT NULL | |
 | `delivery_fee` | numeric(10,2) | NOT NULL, default 0 | Snapshot del fee al momento del pedido |
 | `discount` | numeric(10,2) | NOT NULL, default 0 | Lo llena `promotions` |
@@ -395,7 +395,7 @@ Modificadores elegidos por ítem — filas hijas, consultables para reportes y c
 
 ### Decisiones tomadas (`orders`)
 
-- **Flujo corto**: `pending → confirmed → preparing → done` + `cancelled`. Sin `out_for_delivery` — el delivery lo hace el admin.
+- **Flujo corto**: `pending → confirmed → done` + `cancelled`. Sin `out_for_delivery` — el delivery lo hace el admin. `preparing` queda como miembro reservado del enum (cocina dedicada futura): ninguna transición lo produce y la app ya tolera su aparición.
 - **Mesa = atributo del pedido**: el admin toma el pedido y asigna `table_id`; sin "cuenta abierta" — si la mesa pide algo más, es otro pedido a la misma mesa.
 - **Snapshots en ítems** (`product_name`, `unit_price`, `option_name`, `price_delta`) y en la orden (`delivery_fee`, `delivery_address`): renombrar productos o editar direcciones no altera el histórico.
 - **`channel` ≠ `service_type`**: canal = quién lo creó (app vs admin); servicio = cómo se consume. Cubre "pedido por teléfono para recoger" (`presencial` + `pickup`).

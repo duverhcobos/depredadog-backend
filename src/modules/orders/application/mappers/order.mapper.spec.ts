@@ -7,7 +7,6 @@ import { OrderItemModifier } from '../../domain/entities/order-item-modifier.ent
 import { ModifierAction } from '../../domain/enums/modifier-action.enum';
 import { OrderChannel } from '../../domain/enums/order-channel.enum';
 import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
-import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderMapper } from './order.mapper';
 
 describe('OrderMapper', () => {
@@ -123,6 +122,37 @@ describe('OrderMapper', () => {
     expect(dto.items).toHaveLength(1);
     expect(dto.total).toBe(9);
     expect(dto.page).toBe(2);
+    expect(dto.limit).toBe(10);
+  });
+
+  it('toAdminResponse expone channel/tableLabel/customerName del contexto', () => {
+    const dto = mapper.toAdminResponse({
+      order: order(),
+      tableLabel: 'Mesa 2',
+      customerName: 'Ana Uno',
+    });
+    expect(dto.id).toBe('o1');
+    expect(dto.channel).toBe('online');
+    expect(dto.tableLabel).toBe('Mesa 2');
+    expect(dto.customerName).toBe('Ana Uno');
+    // Hereda la respuesta completa del cliente.
+    expect(dto.items).toHaveLength(1);
+    expect(dto.payment!.providerReference).toBe('sim-ref-9');
+  });
+
+  it('toAdminListResponse arma el envelope con ítems admin', () => {
+    const dto = mapper.toAdminListResponse(
+      {
+        items: [{ order: order(), tableLabel: null, customerName: 'Ana Uno' }],
+        total: 4,
+      },
+      3,
+      10,
+    );
+    expect(dto.items).toHaveLength(1);
+    expect(dto.items[0].customerName).toBe('Ana Uno');
+    expect(dto.total).toBe(4);
+    expect(dto.page).toBe(3);
     expect(dto.limit).toBe(10);
   });
 });

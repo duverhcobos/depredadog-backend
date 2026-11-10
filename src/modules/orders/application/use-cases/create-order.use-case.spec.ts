@@ -37,6 +37,7 @@ import {
   IOrderRepository,
   ORDER_REPOSITORY,
 } from '../../domain/repositories/order.repository.interface';
+import { OrderItemsBuilder } from '../../domain/services/order-items-builder.service';
 import {
   CreateOrderCommand,
   CreateOrderUseCase,
@@ -144,6 +145,11 @@ describe('CreateOrderUseCase', () => {
       findByProviderReference: jest.fn(),
       cancelPendingAggregate: jest.fn(),
       resolvePaymentAggregate: jest.fn(),
+      findForAdmin: jest.fn(),
+      findById: jest.fn(),
+      transitionStatus: jest.fn(),
+      confirmPayment: jest.fn(),
+      findActiveTableIds: jest.fn(),
     };
     gateway = {
       initiatePush: jest.fn(),
@@ -155,6 +161,8 @@ describe('CreateOrderUseCase', () => {
     store = {
       getSettings: jest.fn(),
       getBusinessHours: jest.fn(),
+      getTables: jest.fn(),
+      getTablesByIds: jest.fn(),
     };
     addresses = {
       findAllByUserId: jest.fn(),
@@ -178,6 +186,9 @@ describe('CreateOrderUseCase', () => {
     const module = await Test.createTestingModule({
       providers: [
         CreateOrderUseCase,
+        // El builder real — la revalidación de catálogo se sigue
+        // cubriendo desde este spec tras la extracción (§019).
+        OrderItemsBuilder,
         { provide: ORDER_REPOSITORY, useValue: orders },
         { provide: PAYMENT_GATEWAY, useValue: gateway },
         { provide: CATALOG_REPOSITORY, useValue: catalog },

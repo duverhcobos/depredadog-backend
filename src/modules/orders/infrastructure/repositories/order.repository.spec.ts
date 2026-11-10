@@ -49,6 +49,7 @@ describe('OrderRepository', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       findAndCount: jest.fn(),
+      query: jest.fn(),
     } as unknown as jest.Mocked<Repository<Order>>;
     items = { find: jest.fn() } as unknown as jest.Mocked<
       Repository<OrderItem>
@@ -59,6 +60,7 @@ describe('OrderRepository', () => {
     payments = {
       find: jest.fn(),
       findOne: jest.fn(),
+      update: jest.fn(),
     } as unknown as jest.Mocked<Repository<Payment>>;
     const module = await Test.createTestingModule({
       providers: [
@@ -401,5 +403,179 @@ describe('OrderRepository', () => {
     await expect(
       repo.findByProviderReference('sim', 'sim-ref-1'),
     ).resolves.toBeNull();
+  });
+
+  it('findForAdmin active: sin filtro de cliente, createdAt ASC (cola FIFO)', async () => {
+    const o = new Order();
+    o.id = 'o1';
+    orm.find.mockResolvedValue([o]);
+    items.find.mockResolvedValue([]);
+    payments.find.mockResolvedValue([]);
+
+    const page = await repo.findForAdmin('active', 1, 20);
+
+    const call = orm.find.mock.calls[0][0] as {
+      where: { customerId?: string };
+      order: { createdAt: string };
+    };
+    expect(call.where.customerId).toBeUndefined();
+    expect(call.order.createdAt).toBe('ASC');
+    expect(orm.findAndCount).not.toHaveBeenCalled();
+    expect(page.total).toBe(1);
+    expect(page.items[0].items).toEqual([]);
+  });
+
+  it('findForAdmin history: findAndCount paginado igual que el listado', async () => {
+    orm.findAndCount.mockResolvedValue([[new Order()], 30]);
+    items.find.mockResolvedValue([]);
+    payments.find.mockResolvedValue([]);
+
+    const page = await repo.findForAdmin('history', 2, 10);
+
+    expect(orm.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 10, take: 10 }),
+    );
+    expect(page.total).toBe(30);
+  });
+
+  it('findById: agregado con modifiers + payment, sin filtro de cliente', async () => {
+    const o = new Order();
+    o.id = 'o1';
+    orm.findOne.mockResolvedValue(o);
+    const item = new OrderItem();
+    item.id = 'i1';
+    item.orderId = 'o1';
+    items.find.mockResolvedValue([item]);
+    const mod = new OrderItemModifier();
+    mod.orderItemId = 'i1';
+    modifiers.find.mockResolvedValue([mod]);
+    const payment = new Payment();
+    payment.orderId = 'o1';
+    payments.find.mockResolvedValue([payment]);
+
+    const found = await repo.findById('o1');
+
+    expect(orm.findOne).toHaveBeenCalledWith({ where: { id: 'o1' } });
+    expect(found?.items[0].modifiers).toEqual([mod]);
+    expect(found?.payment).toBe(payment);
+  });
+
+  it('findById inexistente → null sin cargar relaciones', async () => {
+    orm.findOne.mockResolvedValue(null);
+    await expect(repo.findById('o-x')).resolves.toBeNull();
+    expect(items.find).not.toHaveBeenCalled();
+  });
+
+  it('transitionStatus: cancel del dueño — payment pending muere primero (locks payments→orders)', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.PENDING; // from leído, sin mutar
+    order.cancelReason = 'Cerramos temprano';
+    order.payment!.id = 'pay1';
+    order.payment!.status = PaymentStatus.FAILED; // mutado por el use-case
+
+    await expect(
+      repo.transitionStatus(order, OrderStatus.CANCELLED),
+    ).resolves.toBe(true);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(em.update).toHaveBeenNthCalledWith(
+      1,
+      Payment,
+      { id: 'pay1', status: PaymentStatus.PENDING },
+      { status: PaymentStatus.FAILED },
+    );
+    expect(em.update).toHaveBeenNthCalledWith(
+      2,
+      Order,
+      { id: 'o1', status: OrderStatus.PENDING },
+      { status: OrderStatus.CANCELLED, cancelReason: 'Cerramos temprano' },
+    );
+  });
+
+  it('transitionStatus sin payment mutado → solo el UPDATE de la orden', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.PENDING;
+    order.payment!.status = PaymentStatus.PENDING; // intacto
+
+    await repo.transitionStatus(order, OrderStatus.CONFIRMED);
+    expect(em.update).toHaveBeenCalledTimes(1);
+    expect(em.update).toHaveBeenCalledWith(
+      Order,
+      { id: 'o1', status: OrderStatus.PENDING },
+      { status: OrderStatus.CONFIRMED, cancelReason: null },
+    );
+  });
+
+  it('transitionStatus affected=0 → false (la orden ya se movió)', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.PENDING;
+    order.payment = null;
+    em.update.mockResolvedValueOnce({ affected: 0 });
+    await expect(
+      repo.transitionStatus(order, OrderStatus.CONFIRMED),
+    ).resolves.toBe(false);
+  });
+
+  it('transitionStatus: carrera perdida tras el kill del payment → false y revierte (sin commit parcial)', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.PENDING;
+    order.payment!.id = 'pay1';
+    order.payment!.status = PaymentStatus.FAILED; // mutado por el use-case (cancel)
+    em.update
+      .mockResolvedValueOnce({ affected: 1 }) // kill del payment corre…
+      .mockResolvedValueOnce({ affected: 0 }); // …pero la orden ya se movió
+    await expect(
+      repo.transitionStatus(order, OrderStatus.CANCELLED),
+    ).resolves.toBe(false);
+    // El centinela sale por throw — la tx no commitea el payment muerto.
+    expect(em.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('resolvePaymentAggregate: orden movida tras ganar el claim → null (revierte todo)', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.CONFIRMED;
+    order.payment!.id = 'pay1';
+    order.payment!.status = PaymentStatus.PAID;
+    em.update
+      .mockResolvedValueOnce({ affected: 1 })
+      .mockResolvedValueOnce({ affected: 0 });
+    await expect(repo.resolvePaymentAggregate(order)).resolves.toBeNull();
+    expect(em.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('confirmPayment: claim UPDATE payments WHERE order_id + pending', async () => {
+    payments.update.mockResolvedValue({ affected: 1 });
+    await expect(repo.confirmPayment('o1', 'admin1')).resolves.toBe(true);
+    expect(payments.update).toHaveBeenCalledWith(
+      { orderId: 'o1', status: PaymentStatus.PENDING },
+      expect.objectContaining({
+        status: PaymentStatus.PAID,
+        confirmedBy: 'admin1',
+        confirmedAt: expect.any(Date),
+      }),
+    );
+  });
+
+  it('confirmPayment affected=0 → false (ya resuelto por otro)', async () => {
+    payments.update.mockResolvedValue({ affected: 0 });
+    await expect(repo.confirmPayment('o1', 'admin1')).resolves.toBe(false);
+  });
+
+  it('findActiveTableIds: tableId → orderNumber del dine_in vivo', async () => {
+    orm.query.mockResolvedValue([
+      { table_id: 't1', n: 3 },
+      { table_id: 't2', n: 5 },
+    ]);
+    const map = await repo.findActiveTableIds();
+    expect(map.size).toBe(2);
+    expect(map.get('t1')).toBe(3);
+    expect(map.get('t2')).toBe(5);
+    expect(orm.query).toHaveBeenCalledWith(
+      expect.stringContaining("service_type = 'dine_in'"),
+    );
   });
 });

@@ -20,6 +20,11 @@ describe('GetMyOrderUseCase', () => {
       findByProviderReference: jest.fn(),
       cancelPendingAggregate: jest.fn(),
       resolvePaymentAggregate: jest.fn(),
+      findForAdmin: jest.fn(),
+      findById: jest.fn(),
+      transitionStatus: jest.fn(),
+      confirmPayment: jest.fn(),
+      findActiveTableIds: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [

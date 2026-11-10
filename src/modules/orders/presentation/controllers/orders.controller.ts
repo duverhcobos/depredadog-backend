@@ -26,7 +26,7 @@ import {
 // cancelación en pending. TODO recurso cuelga del JWT — nunca del :id.
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @HttpCode(201)

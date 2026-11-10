@@ -19,6 +19,7 @@ describe('ForgotPasswordUseCase', () => {
       findByEmail: jest.fn(),
       findByGoogleId: jest.fn(),
       findByReferralCode: jest.fn(),
+      findNamesByIds: jest.fn(),
       save: jest.fn(),
     };
     verificationCode = {

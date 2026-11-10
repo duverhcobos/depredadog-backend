@@ -15,6 +15,8 @@ describe('GetStoreConfigUseCase', () => {
     store = {
       getSettings: jest.fn(),
       getBusinessHours: jest.fn(),
+      getTables: jest.fn(),
+      getTablesByIds: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [

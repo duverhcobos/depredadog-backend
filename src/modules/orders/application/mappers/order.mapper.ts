@@ -5,6 +5,14 @@ import { OrderItem } from '../../domain/entities/order-item.entity';
 import { OrderItemModifier } from '../../domain/entities/order-item-modifier.entity';
 import { OrderListPage } from '../../domain/repositories/order.repository.interface';
 import {
+  AdminOrderListResponseDto,
+  AdminOrderResponseDto,
+} from '../dtos/admin-order-response.dto';
+import {
+  AdminOrderListResult,
+  AdminOrderResult,
+} from '../use-cases/admin-order-results';
+import {
   OrderItemModifierResponseDto,
   OrderItemResponseDto,
   OrderListResponseDto,
@@ -45,6 +53,31 @@ export class OrderMapper {
     dto.items = page.items.map((o) => this.toResponse(o));
     dto.total = page.total;
     dto.page = pageNum;
+    dto.limit = limit;
+    return dto;
+  }
+
+  // El admin ve el pedido completo + contexto operativo — se pasa por
+  // parámetro porque el mapper no consulta (responsabilidad del
+  // use-case llenar tableLabel/customerName).
+  toAdminResponse(result: AdminOrderResult): AdminOrderResponseDto {
+    const dto = new AdminOrderResponseDto();
+    Object.assign(dto, this.toResponse(result.order));
+    dto.channel = result.order.channel;
+    dto.tableLabel = result.tableLabel;
+    dto.customerName = result.customerName;
+    return dto;
+  }
+
+  toAdminListResponse(
+    result: AdminOrderListResult,
+    page: number,
+    limit: number,
+  ): AdminOrderListResponseDto {
+    const dto = new AdminOrderListResponseDto();
+    dto.items = result.items.map((r) => this.toAdminResponse(r));
+    dto.total = result.total;
+    dto.page = page;
     dto.limit = limit;
     return dto;
   }

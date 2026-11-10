@@ -10,6 +10,7 @@ describe('UserRepository', () => {
   beforeEach(() => {
     orm = {
       findOne: jest.fn(),
+      find: jest.fn(),
       save: jest.fn(),
     } as unknown as jest.Mocked<Repository<User>>;
     repo = new UserRepository(orm);
@@ -40,5 +41,27 @@ describe('UserRepository', () => {
     const error = new Error('connection lost');
     orm.save.mockRejectedValue(error);
     await expect(repo.save(new User())).rejects.toBe(error);
+  });
+
+  it('findNamesByIds mapea id → "Nombre Apellido" en una query IN con select parcial', async () => {
+    orm.find.mockResolvedValue([
+      Object.assign(new User(), {
+        id: 'u1',
+        firstName: 'Juan',
+        firstLastName: 'Pérez',
+      }),
+    ]);
+    const names = await repo.findNamesByIds(['u1', 'u2']);
+    expect(orm.find).toHaveBeenCalledWith({
+      where: { id: expect.anything(), deletedAt: expect.anything() },
+      select: { id: true, firstName: true, firstLastName: true },
+    });
+    expect(names.get('u1')).toBe('Juan Pérez');
+    expect(names.has('u2')).toBe(false);
+  });
+
+  it('findNamesByIds con lista vacía → Map vacío sin tocar la BD', async () => {
+    await expect(repo.findNamesByIds([])).resolves.toEqual(new Map());
+    expect(orm.find).not.toHaveBeenCalled();
   });
 });

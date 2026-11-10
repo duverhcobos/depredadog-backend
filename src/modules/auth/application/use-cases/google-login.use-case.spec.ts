@@ -35,6 +35,7 @@ describe('GoogleLoginUseCase', () => {
       findByEmail: jest.fn(),
       findByGoogleId: jest.fn(),
       findByReferralCode: jest.fn(),
+      findNamesByIds: jest.fn(),
       save: jest.fn(),
     };
     verifier = { verify: jest.fn().mockResolvedValue(profile) };

@@ -1,4 +1,5 @@
 import { Order } from '../entities/order.entity';
+import { OrderStatus } from '../enums/order-status.enum';
 
 export interface OrderListPage {
   items: Order[];
@@ -66,6 +67,31 @@ export interface IOrderRepository {
    * una orden cancelada nunca se resucita.
    */
   resolvePaymentAggregate(order: Order): Promise<Order | null>;
+  /** Cola del dueño — sin filtro de cliente (presenciales con NULL). */
+  findForAdmin(
+    bucket: 'active' | 'history',
+    page: number,
+    limit: number,
+  ): Promise<OrderListPage>;
+  /** Vista del dueño — id solo, sin filtro de customer. */
+  findById(id: string): Promise<Order | null>;
+  /**
+   * Transición admin atómica: UPDATE orders SET status/cancelReason
+   * WHERE id AND status=<estado leído>. false → alguien movió la orden
+   * entre read y write → 409 (patrón consumo atómico). Si el agregado
+   * trae el payment mutado a 'failed' (cancel del dueño), el pago
+   * pendiente muere en la misma tx — mismo orden de locks
+   * payments→orders que cancelPendingAggregate/resolvePaymentAggregate.
+   */
+  transitionStatus(order: Order, to: OrderStatus): Promise<boolean>;
+  /**
+   * Claim del cobro manual: UPDATE payments SET paid, confirmed_by,
+   * confirmed_at WHERE order_id AND status='pending'. false → ya
+   * resuelto (idempotente si era paid; 409 si failed/refunded).
+   */
+  confirmPayment(orderId: string, adminId: string): Promise<boolean>;
+  /** Mesas con pedido dine_in vivo → tableId → orderNumber. */
+  findActiveTableIds(): Promise<Map<string, number>>;
 }
 
 export const ORDER_REPOSITORY = Symbol('IOrderRepository');
