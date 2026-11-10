@@ -85,6 +85,8 @@ export class OrderMapper {
     dto.status = p.status;
     dto.amount = p.amount;
     dto.payerPhone = p.payerPhone;
+    dto.provider = p.provider;
+    dto.providerReference = p.providerReference;
     return dto;
   }
 }

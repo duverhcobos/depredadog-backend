@@ -83,7 +83,9 @@ El pedido vuelve con `status: "cancelled"`, `cancelReason` lleno y
     "method": "cash",
     "status": "failed",
     "amount": 16000,
-    "payerPhone": null
+    "payerPhone": null,
+    "provider": null,
+    "providerReference": null
   }
 }
 ```

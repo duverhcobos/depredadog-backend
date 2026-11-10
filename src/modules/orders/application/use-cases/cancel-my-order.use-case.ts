@@ -37,6 +37,12 @@ export class CancelMyOrderUseCase {
     if (order.payment?.status === PaymentStatus.PENDING) {
       order.payment.status = PaymentStatus.FAILED;
     }
-    return this.orders.saveAggregate(order);
+    // El UPDATE condicional es la verdad atómica: si el webhook del
+    // proveedor confirmó/pagó entre el check de arriba y este write,
+    // affected=0 → el pedido YA no es cancelable (respuesta honesta,
+    // no un cancel que miente).
+    const cancelled = await this.orders.cancelPendingAggregate(order);
+    if (!cancelled) throw new OrderNotCancellableException();
+    return order;
   }
 }

@@ -59,6 +59,8 @@ describe('OrderMapper', () => {
     p.status = PaymentStatus.PENDING;
     p.amount = 18000;
     p.payerPhone = '3001234567';
+    p.provider = 'sim';
+    p.providerReference = 'sim-ref-9';
     o.payment = p;
     return o;
   }
@@ -98,6 +100,8 @@ describe('OrderMapper', () => {
     expect(dto.payment!.method).toBe('transfer');
     expect(dto.payment!.status).toBe('pending');
     expect(dto.payment!.payerPhone).toBe('3001234567');
+    expect(dto.payment!.provider).toBe('sim');
+    expect(dto.payment!.providerReference).toBe('sim-ref-9');
     // Nunca exponemos customerId ni campos internos.
     expect(dto).not.toHaveProperty('customerId');
     expect(dto).not.toHaveProperty('clientRequestId');

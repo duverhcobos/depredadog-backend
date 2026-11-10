@@ -32,7 +32,9 @@ describe('CancelMyOrderUseCase', () => {
       createAggregate: jest.fn(),
       findByCustomer: jest.fn(),
       findByIdForCustomer: jest.fn(),
-      saveAggregate: jest.fn((o) => Promise.resolve(o)),
+      findByProviderReference: jest.fn(),
+      cancelPendingAggregate: jest.fn(() => Promise.resolve(true)),
+      resolvePaymentAggregate: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [
@@ -54,7 +56,7 @@ describe('CancelMyOrderUseCase', () => {
     expect(saved.status).toBe(OrderStatus.CANCELLED);
     expect(saved.cancelReason).toBe('Me equivoqué');
     expect(saved.payment?.status).toBe(PaymentStatus.FAILED);
-    expect(orders.saveAggregate).toHaveBeenCalledWith(order);
+    expect(orders.cancelPendingAggregate).toHaveBeenCalledWith(order);
   });
 
   it('confirmed → OrderNotCancellableException (409)', async () => {
@@ -64,7 +66,7 @@ describe('CancelMyOrderUseCase', () => {
     await expect(
       useCase.execute({ orderId: 'o1', customerId: 'u1' }),
     ).rejects.toBeInstanceOf(OrderNotCancellableException);
-    expect(orders.saveAggregate).not.toHaveBeenCalled();
+    expect(orders.cancelPendingAggregate).not.toHaveBeenCalled();
   });
 
   it('ajena/inexistente → OrderNotFoundException (404)', async () => {
@@ -72,7 +74,7 @@ describe('CancelMyOrderUseCase', () => {
     await expect(
       useCase.execute({ orderId: 'o-x', customerId: 'u1' }),
     ).rejects.toBeInstanceOf(OrderNotFoundException);
-    expect(orders.saveAggregate).not.toHaveBeenCalled();
+    expect(orders.cancelPendingAggregate).not.toHaveBeenCalled();
   });
 
   it('sin reason → cancelReason null; pago ya pago no se toca', async () => {
@@ -82,5 +84,14 @@ describe('CancelMyOrderUseCase', () => {
     const saved = await useCase.execute({ orderId: 'o1', customerId: 'u1' });
     expect(saved.cancelReason).toBeNull();
     expect(saved.payment?.status).toBe(PaymentStatus.PAID);
+  });
+
+  it('cancelPendingAggregate → false (webhook ganó la carrera) → OrderNotCancellableException', async () => {
+    const order = pendingOrder();
+    orders.findByIdForCustomer.mockResolvedValue(order);
+    orders.cancelPendingAggregate.mockResolvedValue(false);
+    await expect(
+      useCase.execute({ orderId: 'o1', customerId: 'u1' }),
+    ).rejects.toBeInstanceOf(OrderNotCancellableException);
   });
 });

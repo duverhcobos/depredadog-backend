@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { Order } from '../../domain/entities/order.entity';
 import { OrderItem } from '../../domain/entities/order-item.entity';
 import { OrderItemModifier } from '../../domain/entities/order-item-modifier.entity';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
+import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
 import {
   IOrderRepository,
   OrderListPage,
@@ -29,7 +31,7 @@ export class OrderRepository implements IOrderRepository {
     private readonly modifiers: Repository<OrderItemModifier>,
     @InjectRepository(Payment)
     private readonly payments: Repository<Payment>,
-  ) { }
+  ) {}
 
   async findByClientRequest(
     customerId: string,
@@ -103,11 +105,11 @@ export class OrderRepository implements IOrderRepository {
     em: EntityManager,
     orderDate: string,
   ): Promise<number> {
-    const row = (await em.query(
+    const row = await em.query<{ n: number }[]>(
       `SELECT COALESCE(MAX(order_number),0)+1 AS n
        FROM orders WHERE order_date = $1`,
       [orderDate],
-    )) as { n: number }[];
+    );
     return row[0].n;
   }
 
@@ -157,6 +159,22 @@ export class OrderRepository implements IOrderRepository {
     return order;
   }
 
+  async findByProviderReference(
+    provider: string,
+    reference: string,
+  ): Promise<Order | null> {
+    const row = await this.payments.findOne({
+      where: { provider, providerReference: reference },
+    });
+    if (!row) return null;
+    // El pago apunta a su orden — cargar el agregado por id (sin
+    // filtro de cliente: el webhook no trae JWT, la referencia ES la
+    // llave secreta que solo conoce quien despachó).
+    const order = await this.orm.findOne({ where: { id: row.orderId } });
+    if (order) order.payment = row;
+    return order;
+  }
+
   // Detalle: ítems con sus modifiers batcheados + el pago más reciente
   // por orden (reintentos dejan filas viejas — la viva es la última).
   private async attachItemsAndPayments(
@@ -201,17 +219,58 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  // Cancel: cambio de estado + payment failed en una tx — sin huérfanos
-  // de push.
-  saveAggregate(order: Order): Promise<Order> {
+  // Cancel atómico: claim del pago PRIMERO (mismo orden de locks que
+  // resolvePaymentAggregate — payments→orders siempre, así los dos
+  // flujos no se bloquean entre sí: quien gana el claim del payment
+  // posee la transición). UPDATE condicional en ambas filas.
+  cancelPendingAggregate(order: Order): Promise<boolean> {
     return this.orm.manager.transaction(async (em) => {
-      const saved = await em.save(order);
       if (order.payment) {
-        order.payment = await em.save(order.payment);
-        saved.payment = order.payment;
+        // affected=0 es OK — el pago ya resuelto no se toca: un
+        // 'paid' nunca revierte a 'failed' por un cancel tardío.
+        await em.update(
+          Payment,
+          { id: order.payment.id, status: PaymentStatus.PENDING },
+          { status: order.payment.status },
+        );
       }
-      saved.items = order.items;
-      return saved;
+      const res = await em.update(
+        Order,
+        { id: order.id, status: OrderStatus.PENDING },
+        { status: order.status, cancelReason: order.cancelReason },
+      );
+      return (res.affected ?? 0) > 0;
+    });
+  }
+
+  // Claim del webhook: UPDATE payments WHERE status='pending' es la
+  // puerta — affected=0 significa que otro resolvedor (reintento del
+  // proveedor) o el cancel del cliente ganó la carrera → null y el
+  // caller re-lee para responder idempotente. Con el claim ganado,
+  // la orden se mueve solo si sigue pending — jamás resucita una
+  // cancelada.
+  resolvePaymentAggregate(order: Order): Promise<Order | null> {
+    return this.orm.manager.transaction(async (em) => {
+      const payment = order.payment!;
+      const claim = await em.update(
+        Payment,
+        { id: payment.id, status: PaymentStatus.PENDING },
+        {
+          status: payment.status,
+          confirmedAt: payment.confirmedAt,
+          // QueryDeepPartialEntity no acepta Record plano en jsonb —
+          // el cast indexado deja el tipo exacto del partial.
+          providerPayload:
+            payment.providerPayload as QueryDeepPartialEntity<Payment>['providerPayload'],
+        },
+      );
+      if (claim.affected === 0) return null;
+      await em.update(
+        Order,
+        { id: order.id, status: OrderStatus.PENDING },
+        { status: order.status, cancelReason: order.cancelReason },
+      );
+      return order;
     });
   }
 }

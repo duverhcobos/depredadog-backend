@@ -69,7 +69,9 @@ completos).
         "method": "cash",
         "status": "pending",
         "amount": 16000,
-        "payerPhone": null
+        "payerPhone": null,
+        "provider": null,
+        "providerReference": null
       }
     }
   ],
@@ -121,7 +123,9 @@ real del bucket — la app dibuja el paginador con él.
         "method": "transfer",
         "status": "failed",
         "amount": 16000,
-        "payerPhone": "3001234567"
+        "payerPhone": "3001234567",
+        "provider": "sim",
+        "providerReference": "sim-9f1c2e3a-7b4d-4e2f-9a1b-2c3d4e5f6a7b"
       }
     }
   ],

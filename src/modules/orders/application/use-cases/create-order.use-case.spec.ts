@@ -14,6 +14,11 @@ import {
   CATALOG_REPOSITORY,
 } from '../../../catalog/domain/repositories/catalog.repository.interface';
 import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
+import { PaymentDispatchFailedException } from '../../../payments/domain/exceptions/payment-dispatch-failed.exception';
+import {
+  IPaymentGateway,
+  PAYMENT_GATEWAY,
+} from '../../../payments/domain/services/payment-gateway.interface';
 import { BusinessHour } from '../../../store/domain/entities/business-hour.entity';
 import { StoreSettings } from '../../../store/domain/entities/store-settings.entity';
 import {
@@ -107,6 +112,7 @@ function withGroup(p: Product, options: ModifierOption[]): Product {
 describe('CreateOrderUseCase', () => {
   let useCase: CreateOrderUseCase;
   let orders: jest.Mocked<IOrderRepository>;
+  let gateway: jest.Mocked<IPaymentGateway>;
   let catalog: jest.Mocked<ICatalogRepository>;
   let store: jest.Mocked<IStoreRepository>;
   let addresses: jest.Mocked<IAddressRepository>;
@@ -135,7 +141,12 @@ describe('CreateOrderUseCase', () => {
       createAggregate: jest.fn((o) => Promise.resolve(o)),
       findByCustomer: jest.fn(),
       findByIdForCustomer: jest.fn(),
-      saveAggregate: jest.fn(),
+      findByProviderReference: jest.fn(),
+      cancelPendingAggregate: jest.fn(),
+      resolvePaymentAggregate: jest.fn(),
+    };
+    gateway = {
+      initiatePush: jest.fn(),
     };
     catalog = {
       getMenu: jest.fn(),
@@ -159,11 +170,16 @@ describe('CreateOrderUseCase', () => {
     store.getBusinessHours.mockResolvedValue(openHours());
     catalog.getOrderableProducts.mockResolvedValue([product('p1')]);
     orders.findByClientRequest.mockResolvedValue(null);
+    gateway.initiatePush.mockResolvedValue({
+      provider: 'sim',
+      reference: 'sim-ref-1',
+    });
 
     const module = await Test.createTestingModule({
       providers: [
         CreateOrderUseCase,
         { provide: ORDER_REPOSITORY, useValue: orders },
+        { provide: PAYMENT_GATEWAY, useValue: gateway },
         { provide: CATALOG_REPOSITORY, useValue: catalog },
         { provide: STORE_REPOSITORY, useValue: store },
         { provide: ADDRESS_REPOSITORY, useValue: addresses },
@@ -624,9 +640,7 @@ describe('CreateOrderUseCase', () => {
   });
 
   it('delivery bajo min_delivery_order → MinOrderAmountException (409)', async () => {
-    store.getSettings.mockResolvedValue(
-      settings({ minDeliveryOrder: 50000 }),
-    );
+    store.getSettings.mockResolvedValue(settings({ minDeliveryOrder: 50000 }));
     await expect(useCase.execute(deliveryCmd)).rejects.toBeInstanceOf(
       MinOrderAmountException,
     );
@@ -634,9 +648,7 @@ describe('CreateOrderUseCase', () => {
   });
 
   it('pickup no cobra deliveryFee ni exige mínimo', async () => {
-    store.getSettings.mockResolvedValue(
-      settings({ minDeliveryOrder: 50000 }),
-    );
+    store.getSettings.mockResolvedValue(settings({ minDeliveryOrder: 50000 }));
     const order = await useCase.execute(base);
     expect(order.deliveryFee).toBe(0);
     expect(order.subtotal).toBe(14000);
@@ -820,5 +832,45 @@ describe('CreateOrderUseCase', () => {
       'Pan',
       'Tocineta caramelizada',
     ]);
+  });
+
+  it('transfer despacha el push (amount/payerPhone/referenceHint) y persiste provider+reference', async () => {
+    const order = await useCase.execute({ ...base, clientRequestId: 'req-7' });
+    expect(gateway.initiatePush).toHaveBeenCalledWith({
+      amount: 14000,
+      payerPhone: '3001234567',
+      referenceHint: 'req-7',
+    });
+    expect(order.payment?.provider).toBe('sim');
+    expect(order.payment?.providerReference).toBe('sim-ref-1');
+    expect(order.payment?.status).toBe(PaymentStatus.PENDING);
+  });
+
+  it('transfer sin clientRequestId despacha con referenceHint undefined', async () => {
+    await useCase.execute(base);
+    expect(gateway.initiatePush).toHaveBeenCalledWith({
+      amount: 14000,
+      payerPhone: '3001234567',
+      referenceHint: undefined,
+    });
+  });
+
+  it('cash NO toca el gateway — provider/providerReference quedan null', async () => {
+    const cmd = { ...deliveryCmd, paymentMethod: 'cash' as const };
+    delete cmd.payerPhone;
+    const order = await useCase.execute(cmd);
+    expect(gateway.initiatePush).not.toHaveBeenCalled();
+    expect(order.payment?.provider).toBeNull();
+    expect(order.payment?.providerReference).toBeNull();
+  });
+
+  it('dispatch que lanza PaymentDispatchFailedException → viaja y createAggregate no se llama', async () => {
+    gateway.initiatePush.mockRejectedValue(
+      new PaymentDispatchFailedException(),
+    );
+    await expect(useCase.execute(base)).rejects.toBeInstanceOf(
+      PaymentDispatchFailedException,
+    );
+    expect(orders.createAggregate).not.toHaveBeenCalled();
   });
 });

@@ -103,6 +103,14 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   STORE_TIMEZONE?: string;
+
+  @IsOptional()
+  @IsString()
+  PAYMENT_GATEWAY_DRIVER?: string;
+
+  @IsOptional()
+  @IsString()
+  PAYMENT_WEBHOOK_SECRET?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

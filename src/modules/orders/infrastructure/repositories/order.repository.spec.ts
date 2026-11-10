@@ -15,7 +15,7 @@ describe('OrderRepository', () => {
   let items: jest.Mocked<Repository<OrderItem>>;
   let modifiers: jest.Mocked<Repository<OrderItemModifier>>;
   let payments: jest.Mocked<Repository<Payment>>;
-  let em: { save: jest.Mock; query: jest.Mock };
+  let em: { save: jest.Mock; query: jest.Mock; update: jest.Mock };
   let transaction: jest.Mock;
 
   function newOrder(): Order {
@@ -39,6 +39,7 @@ describe('OrderRepository', () => {
         return Promise.resolve(e);
       }),
       query: jest.fn().mockResolvedValue([{ n: 7 }]),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     transaction = jest.fn((cb: (m: EntityManager) => unknown) =>
       Promise.resolve(cb(em as unknown as EntityManager)),
@@ -49,13 +50,16 @@ describe('OrderRepository', () => {
       findOne: jest.fn(),
       findAndCount: jest.fn(),
     } as unknown as jest.Mocked<Repository<Order>>;
-    items = { find: jest.fn() } as unknown as jest.Mocked<Repository<OrderItem>>;
+    items = { find: jest.fn() } as unknown as jest.Mocked<
+      Repository<OrderItem>
+    >;
     modifiers = { find: jest.fn() } as unknown as jest.Mocked<
       Repository<OrderItemModifier>
     >;
-    payments = { find: jest.fn(), findOne: jest.fn() } as unknown as jest.Mocked<
-      Repository<Payment>
-    >;
+    payments = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+    } as unknown as jest.Mocked<Repository<Payment>>;
     const module = await Test.createTestingModule({
       providers: [
         OrderRepository,
@@ -287,13 +291,115 @@ describe('OrderRepository', () => {
     expect(found?.items[0].modifiers[0].replacesOptionId).toBe('opt-removed');
   });
 
-  it('saveAggregate guarda orden + payment en una tx', async () => {
+  it('cancelPendingAggregate: claim del payment + update condicional de la orden en una tx', async () => {
     const order = newOrder();
+    order.id = 'o1';
     order.status = OrderStatus.CANCELLED;
+    order.cancelReason = 'Me equivoqué';
+    order.payment!.id = 'pay1';
     order.payment!.status = PaymentStatus.FAILED;
-    const saved = await repo.saveAggregate(order);
+
+    await expect(repo.cancelPendingAggregate(order)).resolves.toBe(true);
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(em.save).toHaveBeenCalledTimes(2); // order + payment
-    expect(saved.payment?.status).toBe(PaymentStatus.FAILED);
+    // Lock order payments→orders, ambos con guarda status='pending'.
+    expect(em.update).toHaveBeenNthCalledWith(
+      1,
+      Payment,
+      { id: 'pay1', status: PaymentStatus.PENDING },
+      { status: PaymentStatus.FAILED },
+    );
+    expect(em.update).toHaveBeenNthCalledWith(
+      2,
+      Order,
+      { id: 'o1', status: OrderStatus.PENDING },
+      { status: OrderStatus.CANCELLED, cancelReason: 'Me equivoqué' },
+    );
+  });
+
+  it('cancelPendingAggregate: la orden ya no estaba pending (webhook ganó) → false', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.CANCELLED;
+    order.payment!.id = 'pay1';
+    order.payment!.status = PaymentStatus.FAILED;
+    em.update
+      .mockResolvedValueOnce({ affected: 1 }) // payment claim ok
+      .mockResolvedValueOnce({ affected: 0 }); // orders ya confirmada
+    await expect(repo.cancelPendingAggregate(order)).resolves.toBe(false);
+  });
+
+  it('resolvePaymentAggregate: claim payments pending → orden condicional en la misma tx', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.status = OrderStatus.CONFIRMED;
+    order.payment!.id = 'pay1';
+    order.payment!.status = PaymentStatus.PAID;
+    order.payment!.confirmedAt = new Date('2026-11-07T20:00:00Z');
+    order.payment!.providerPayload = { raw: 'ok' };
+
+    const saved = await repo.resolvePaymentAggregate(order);
+    expect(saved).toBe(order);
+    expect(em.update).toHaveBeenNthCalledWith(
+      1,
+      Payment,
+      { id: 'pay1', status: PaymentStatus.PENDING },
+      {
+        status: PaymentStatus.PAID,
+        confirmedAt: order.payment!.confirmedAt,
+        providerPayload: { raw: 'ok' },
+      },
+    );
+    expect(em.update).toHaveBeenNthCalledWith(
+      2,
+      Order,
+      { id: 'o1', status: OrderStatus.PENDING },
+      { status: OrderStatus.CONFIRMED, cancelReason: null },
+    );
+  });
+
+  it('resolvePaymentAggregate: claim perdido (affected=0) → null sin tocar la orden', async () => {
+    const order = newOrder();
+    order.id = 'o1';
+    order.payment!.id = 'pay1';
+    order.payment!.status = PaymentStatus.PAID;
+    em.update.mockResolvedValueOnce({ affected: 0 });
+    await expect(repo.resolvePaymentAggregate(order)).resolves.toBeNull();
+    expect(em.update).toHaveBeenCalledTimes(1); // jamás llega a orders
+  });
+
+  it('findByProviderReference encuentra la orden con su payment cargado', async () => {
+    const row = new Payment();
+    row.orderId = 'o1';
+    row.provider = 'sim';
+    row.providerReference = 'sim-ref-1';
+    payments.findOne.mockResolvedValue(row);
+    const order = new Order();
+    order.id = 'o1';
+    orm.findOne.mockResolvedValue(order);
+
+    const found = await repo.findByProviderReference('sim', 'sim-ref-1');
+    expect(payments.findOne).toHaveBeenCalledWith({
+      where: { provider: 'sim', providerReference: 'sim-ref-1' },
+    });
+    expect(orm.findOne).toHaveBeenCalledWith({ where: { id: 'o1' } });
+    expect(found?.payment).toBe(row);
+  });
+
+  it('findByProviderReference referencia inexistente → null sin buscar orden', async () => {
+    payments.findOne.mockResolvedValue(null);
+    await expect(
+      repo.findByProviderReference('sim', 'sim-x'),
+    ).resolves.toBeNull();
+    expect(orm.findOne).not.toHaveBeenCalled();
+  });
+
+  it('findByProviderReference payment huérfano (orden borrada) → null', async () => {
+    const row = new Payment();
+    row.orderId = 'o-x';
+    payments.findOne.mockResolvedValue(row);
+    orm.findOne.mockResolvedValue(null);
+    await expect(
+      repo.findByProviderReference('sim', 'sim-ref-1'),
+    ).resolves.toBeNull();
   });
 });

@@ -47,3 +47,4 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 | GET | `/orders` | [002](orders/002-get-orders.md) | 🔶 backend listo — sin integrar |
 | GET | `/orders/:id` | [003](orders/003-get-orders-id.md) | 🔶 backend listo — sin integrar |
 | POST | `/orders/:id/cancel` | [004](orders/004-post-orders-id-cancel.md) | 🔶 backend listo — sin integrar |
+| POST | `/payments/webhook/:provider` | [001](payments/001-post-payments-webhook-provider.md) | 🔶 backend listo — sin integrar |

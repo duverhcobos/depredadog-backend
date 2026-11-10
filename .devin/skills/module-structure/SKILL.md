@@ -101,6 +101,8 @@ Cada módulo bajo `src/modules/<nombre>/` sigue esta estructura completa:
 │   │   └── <entidad>.repository.ts        ← Implements IXxxRepository
 │   ├── services/
 │   │   └── <servicio>.service.ts          ← Servicios externos (bcrypt, email, etc.)
+│   ├── gateways/
+│   │   └── <proveedor>.gateway.ts         ← Adapters de proveedores remotos (Nequi, pasarela de pagos) — implementan el port de domain/services/
 │   └── strategies/
 │       └── <estrategia>.strategy.ts       ← Passport strategies
 │

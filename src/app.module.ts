@@ -7,6 +7,7 @@ import authConfig from './config/auth.config';
 import databaseConfig from './config/database.config';
 import emailConfig from './config/email.config';
 import loggerConfig from './config/logger.config';
+import paymentConfig from './config/payment.config';
 import storeConfig from './config/store.config';
 import throttleConfig from './config/throttle.config';
 import { validate } from './config/env.validation';
@@ -14,6 +15,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { StoreModule } from './modules/store/store.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { DomainExceptionHandler } from './common/filters/handlers/domain-exception.handler';
@@ -37,6 +39,7 @@ import { HealthModule } from './infrastructure/health/health.module';
         emailConfig,
         throttleConfig,
         loggerConfig,
+        paymentConfig,
         storeConfig,
       ],
       validate,
@@ -59,6 +62,7 @@ import { HealthModule } from './infrastructure/health/health.module';
     CatalogModule,
     StoreModule,
     OrdersModule,
+    PaymentsModule,
   ],
   providers: [
     DomainExceptionHandler,

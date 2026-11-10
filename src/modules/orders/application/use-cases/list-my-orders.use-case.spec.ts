@@ -15,7 +15,9 @@ describe('ListMyOrdersUseCase', () => {
       createAggregate: jest.fn(),
       findByCustomer: jest.fn(),
       findByIdForCustomer: jest.fn(),
-      saveAggregate: jest.fn(),
+      findByProviderReference: jest.fn(),
+      cancelPendingAggregate: jest.fn(),
+      resolvePaymentAggregate: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [

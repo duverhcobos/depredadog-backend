@@ -25,6 +25,8 @@ export class OrderPaymentResponseDto {
   status!: string;
   amount!: number;
   payerPhone!: string | null;
+  provider!: string | null;
+  providerReference!: string | null;
 }
 export class OrderResponseDto {
   id!: string;

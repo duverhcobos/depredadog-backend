@@ -69,7 +69,9 @@
     "method": "cash",
     "status": "pending",
     "amount": 16000,
-    "payerPhone": null
+    "payerPhone": null,
+    "provider": null,
+    "providerReference": null
   }
 }
 ```

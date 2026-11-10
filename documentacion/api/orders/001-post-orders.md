@@ -125,7 +125,9 @@
     "method": "transfer",
     "status": "pending",
     "amount": 16000,
-    "payerPhone": "3001234567"
+    "payerPhone": "3001234567",
+    "provider": "sim",
+    "providerReference": "sim-9f1c2e3a-7b4d-4e2f-9a1b-2c3d4e5f6a7b"
   }
 }
 ```
@@ -177,7 +179,9 @@
     "method": "cash",
     "status": "pending",
     "amount": 16000,
-    "payerPhone": null
+    "payerPhone": null,
+    "provider": null,
+    "providerReference": null
   }
 }
 ```
@@ -219,6 +223,15 @@ ingrediente esencial agotado, `duplicate modifier`, opción ajena al
 producto, `cannot be removed`, opción `unavailable`, `invalid free
 replacement`.
 
+### 502 — El cobro `transfer` no se pudo despachar
+El push al proveedor falló (celular sin cuenta, upstream caído,
+timeout). La orden **no se crea** — corregir el medio de pago y
+reintentar con el mismo `clientRequestId` sin dejar pedidos huérfanos.
+
+```json
+{ "statusCode": 502, "errorCode": "PAYMENT_DISPATCH_FAILED", "message": "Payment could not be dispatched", "timestamp": "..." }
+```
+
 ## Notas
 
 - **Precios del servidor**: `unitPrice`, `priceDelta`, `deliveryFee`,
@@ -235,7 +248,10 @@ replacement`.
 - **Snapshot de dirección**: `deliveryAddress` guarda
   `"landmark (neighborhood)"` como texto — borrar la dirección después
   no altera el pedido. `deliveryLocationLink` viaja aparte.
-- **`payment` nace `pending`** con `amount` = `total`. `provider` no
-  se expone (queda NULL hasta la integración de pasarela).
+- **`payment` nace `pending`** con `amount` = `total`. En `transfer`
+  el push se despacha ANTES de persistir: `provider` (`sim` en dev,
+  `nequi` con llaves QA) y `providerReference` vienen poblados — la
+  resolución llega por `POST /payments/webhook/:provider`. En `cash`
+  ambos quedan `null` (lo confirma el local).
 - **Local cerrado**: fuera de `business_hours` responde 409
   `"Store is closed"` — el contrato se defiende solo.

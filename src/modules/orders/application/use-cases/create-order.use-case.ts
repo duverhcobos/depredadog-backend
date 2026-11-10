@@ -16,6 +16,10 @@ import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { PaymentMethod } from '../../../payments/domain/enums/payment-method.enum';
 import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
 import {
+  type IPaymentGateway,
+  PAYMENT_GATEWAY,
+} from '../../../payments/domain/services/payment-gateway.interface';
+import {
   type IStoreRepository,
   STORE_REPOSITORY,
 } from '../../../store/domain/repositories/store.repository.interface';
@@ -73,6 +77,8 @@ export class CreateOrderUseCase {
   constructor(
     @Inject(ORDER_REPOSITORY)
     private readonly orders: IOrderRepository,
+    @Inject(PAYMENT_GATEWAY)
+    private readonly gateway: IPaymentGateway,
     @Inject(CATALOG_REPOSITORY)
     private readonly catalog: ICatalogRepository,
     @Inject(STORE_REPOSITORY)
@@ -80,7 +86,7 @@ export class CreateOrderUseCase {
     @Inject(ADDRESS_REPOSITORY)
     private readonly addresses: IAddressRepository,
     private readonly config: ConfigService,
-  ) { }
+  ) {}
 
   async execute(cmd: CreateOrderCommand): Promise<Order> {
     // 1. Idempotencia — un reintento responde la misma orden.
@@ -134,7 +140,7 @@ export class CreateOrderUseCase {
     order.contactPhone = cmd.contactPhone?.trim() || null;
     order.deliveryLocationLink = cmd.deliveryLocationLink ?? null;
     await this.fillDeliverySnapshot(cmd, order); // addressId XOR newAddress
-    order.payment = this.buildPayment(cmd, order.total);
+    order.payment = await this.buildPayment(cmd, order.total);
     return this.orders.createAggregate(order);
   }
 
@@ -246,8 +252,7 @@ export class CreateOrderUseCase {
         if (m.replacesOptionId) {
           const replaced = options.get(m.replacesOptionId);
           const hasRemovedRow = dto.modifiers.some(
-            (x) =>
-              x.optionId === m.replacesOptionId && x.action === 'removed',
+            (x) => x.optionId === m.replacesOptionId && x.action === 'removed',
           );
           const ok =
             replaced?.includedByDefault &&
@@ -311,7 +316,9 @@ export class CreateOrderUseCase {
     dto: CreateOrderItemCommand,
   ): string[] {
     const removed = new Set(
-      dto.modifiers.filter((m) => m.action === 'removed').map((m) => m.optionId),
+      dto.modifiers
+        .filter((m) => m.action === 'removed')
+        .map((m) => m.optionId),
     );
     const names: string[] = [];
     for (const { opt, includedByDefault } of options.values()) {
@@ -368,13 +375,29 @@ export class CreateOrderUseCase {
     return trimmed ? `${landmark.trim()} (${trimmed})` : landmark.trim();
   }
 
-  private buildPayment(cmd: CreateOrderCommand, total: number): Payment {
+  private async buildPayment(
+    cmd: CreateOrderCommand,
+    total: number,
+  ): Promise<Payment> {
     const p = new Payment();
     p.method = cmd.paymentMethod as PaymentMethod;
     p.status = PaymentStatus.PENDING;
     p.amount = total;
     p.payerPhone = cmd.paymentMethod === 'transfer' ? cmd.payerPhone! : null;
-    // provider NULL — el adapter Nequi llega en su propuesta (010).
+    // Transfer = cobro por push (Nequi en prod, sim en dev): se
+    // despacha ANTES de persistir — si el proveedor no lo acepta la
+    // orden nace ni siquiera (fail-fast, el cliente corrige y
+    // reintenta con el mismo clientRequestId). Cash no toca gateway:
+    // queda pending a la confirmación del dueño.
+    if (cmd.paymentMethod === 'transfer') {
+      const dispatched = await this.gateway.initiatePush({
+        amount: total,
+        payerPhone: cmd.payerPhone!,
+        referenceHint: cmd.clientRequestId ?? undefined,
+      });
+      p.provider = dispatched.provider;
+      p.providerReference = dispatched.reference;
+    }
     return p;
   }
 
