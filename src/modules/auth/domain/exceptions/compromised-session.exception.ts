@@ -2,6 +2,6 @@ import { DomainException } from '../../../../common/exceptions/domain.exception'
 
 export class CompromisedSessionException extends DomainException {
   constructor() {
-    super('Session expired, please log in again', 401);
+    super('Session expired, please log in again', 401, 'COMPROMISED_SESSION');
   }
 }

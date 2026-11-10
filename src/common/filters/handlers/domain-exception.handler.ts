@@ -14,6 +14,7 @@ export class DomainExceptionHandler implements ExceptionHandler {
     const ex = exception as DomainException;
     res.status(ex.httpStatus).json({
       statusCode: ex.httpStatus,
+      ...(ex.errorCode !== undefined && { errorCode: ex.errorCode }),
       message: ex.message,
       timestamp: new Date().toISOString(),
     });

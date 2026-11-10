@@ -5,6 +5,6 @@ import { DomainException } from '../../../../common/exceptions/domain.exception'
 // carta).
 export class OrderCatalogViolationException extends DomainException {
   constructor(detail: string) {
-    super(`Order rejected by catalog: ${detail}`, 409);
+    super(`Order rejected by catalog: ${detail}`, 409, 'ORDER_CATALOG_VIOLATION');
   }
 }

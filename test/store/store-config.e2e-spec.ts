@@ -63,9 +63,11 @@ describe('GET /store/config (e2e)', () => {
   });
 
   it('rechaza sin token (401)', async () => {
-    await request(app.getHttpServer() as App)
+    const res = await request(app.getHttpServer() as App)
       .get('/store/config')
       .expect(401);
+    // El 401 del guard no es DomainException — errorCode no se inventa.
+    expect(res.body.errorCode).toBeUndefined();
   });
 
   it('sin fila de store_settings → 404 store not configured', async () => {
@@ -76,6 +78,7 @@ describe('GET /store/config (e2e)', () => {
 
     const body = res.body as { statusCode: number; message: string };
     expect(body.message).toBe('Store is not configured');
+    expect(res.body.errorCode).toBe('STORE_NOT_CONFIGURED');
   });
 
   it('devuelve la config con isOpen derivado, today y las 7 filas semanales', async () => {

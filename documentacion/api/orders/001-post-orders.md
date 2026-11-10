@@ -187,7 +187,7 @@
 falla la validación de tipos del DTO — `forbidNonWhitelisted` activo):
 
 ```json
-{ "statusCode": 400, "message": "Pickup orders must be paid by transfer", "timestamp": "..." }
+{ "statusCode": 400, "errorCode": "INVALID_ORDER_DATA", "message": "Pickup orders must be paid by transfer", "timestamp": "..." }
 ```
 
 Posibles `message` de combinación:
@@ -204,14 +204,14 @@ fields do not apply to pickup"`.
 
 ### 404 — `addressId` inexistente o de otro usuario
 ```json
-{ "statusCode": 404, "message": "Address not found", "timestamp": "..." }
+{ "statusCode": 404, "errorCode": "ADDRESS_NOT_FOUND", "message": "Address not found", "timestamp": "..." }
 ```
 
 ### 409 — Rechazo de negocio
 ```json
-{ "statusCode": 409, "message": "Order rejected by catalog: option 75b76acd-... not for product", "timestamp": "..." }
-{ "statusCode": 409, "message": "Store is closed", "timestamp": "..." }
-{ "statusCode": 409, "message": "Delivery orders require a minimum of 10000", "timestamp": "..." }
+{ "statusCode": 409, "errorCode": "ORDER_CATALOG_VIOLATION", "message": "Order rejected by catalog: option 75b76acd-... not for product", "timestamp": "..." }
+{ "statusCode": 409, "errorCode": "STORE_CLOSED", "message": "Store is closed", "timestamp": "..." }
+{ "statusCode": 409, "errorCode": "MIN_ORDER_AMOUNT", "message": "Delivery orders require a minimum of 10000", "timestamp": "..." }
 ```
 
 Prefijo `"Order rejected by catalog: "` + detalle: producto agotado,

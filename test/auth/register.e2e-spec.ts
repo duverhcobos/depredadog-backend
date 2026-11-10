@@ -117,6 +117,7 @@ describe('POST /auth/register (e2e)', () => {
     expect((res.body as { message: string }).message).toBe(
       'Email is already registered',
     );
+    expect(res.body.errorCode).toBe('EMAIL_ALREADY_REGISTERED');
   });
 
   it('rechaza referralCode inexistente', async () => {

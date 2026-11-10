@@ -98,7 +98,7 @@ El pedido vuelve con `status: "cancelled"`, `cancelReason` lleno y
 
 ### 404 — No existe o es de otro usuario
 ```json
-{ "statusCode": 404, "message": "Order not found", "timestamp": "..." }
+{ "statusCode": 404, "errorCode": "ORDER_NOT_FOUND", "message": "Order not found", "timestamp": "..." }
 ```
 
 ### 409 — Ya no está `pending`
@@ -106,7 +106,7 @@ Confirmado, en preparación, terminado o **ya cancelado** — re-cancelar
 también responde 409.
 
 ```json
-{ "statusCode": 409, "message": "Order can only be cancelled while pending", "timestamp": "..." }
+{ "statusCode": 409, "errorCode": "ORDER_NOT_CANCELLABLE", "message": "Order can only be cancelled while pending", "timestamp": "..." }
 ```
 
 ## Notas

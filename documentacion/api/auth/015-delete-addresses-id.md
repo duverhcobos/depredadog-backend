@@ -38,7 +38,7 @@ Sin body.
 
 ### 404 — No existe o no es del usuario
 ```json
-{ "statusCode": 404, "message": "Address not found", "timestamp": "..." }
+{ "statusCode": 404, "errorCode": "ADDRESS_NOT_FOUND", "message": "Address not found", "timestamp": "..." }
 ```
 
 ## Notas

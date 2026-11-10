@@ -64,11 +64,14 @@
 ```
 
 ### 400 — Validación / `referralCode` inválido
-`message` es array en errores de campos; `"Invalid referral code"` si el código no existe.
+`message` es array en errores de campos (sin `errorCode`); si el código de referido no existe:
+```json
+{ "statusCode": 400, "errorCode": "INVALID_REFERRAL_CODE", "message": "Invalid referral code", "timestamp": "..." }
+```
 
 ### 409 — Email ya registrado
 ```json
-{ "statusCode": 409, "message": "Email is already registered", "timestamp": "..." }
+{ "statusCode": 409, "errorCode": "EMAIL_ALREADY_REGISTERED", "message": "Email is already registered", "timestamp": "..." }
 ```
 
 ## Notas

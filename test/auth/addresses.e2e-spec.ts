@@ -199,11 +199,12 @@ describe('/addresses (e2e)', () => {
     await registerUser(app, { email: emailB });
     const tokensB = await activateAndGetTokens(app, emailB);
 
-    await request(server())
+    const resAjena = await request(server())
       .patch(`/addresses/${ajena.id as string}`)
       .set(auth(tokensB.accessToken))
       .send({ landmark: 'Hackeo' })
       .expect(404);
+    expect(resAjena.body.errorCode).toBe('ADDRESS_NOT_FOUND');
 
     await request(server())
       .delete(`/addresses/${ajena.id as string}`)
@@ -220,11 +221,12 @@ describe('/addresses (e2e)', () => {
 
   it('PATCH/DELETE de uuid inexistente → 404', async () => {
     const id = '00000000-0000-4000-8000-000000000000';
-    await request(server())
+    const res = await request(server())
       .patch(`/addresses/${id}`)
       .set(auth(tokens.accessToken))
       .send({ landmark: 'X' })
       .expect(404);
+    expect(res.body.errorCode).toBe('ADDRESS_NOT_FOUND');
     await request(server())
       .delete(`/addresses/${id}`)
       .set(auth(tokens.accessToken))

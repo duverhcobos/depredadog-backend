@@ -66,7 +66,7 @@ se rechazan (`forbidNonWhitelisted`).
 
 ### 409 — Límite alcanzado
 ```json
-{ "statusCode": 409, "message": "Address limit reached (10 per user)", "timestamp": "..." }
+{ "statusCode": 409, "errorCode": "ADDRESS_LIMIT_REACHED", "message": "Address limit reached (10 per user)", "timestamp": "..." }
 ```
 
 ## Notas

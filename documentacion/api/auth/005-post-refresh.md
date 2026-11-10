@@ -32,8 +32,8 @@
 
 ### 401 — Token inexistente, expirado o revocado
 ```json
-{ "statusCode": 401, "message": "Invalid or expired session", "timestamp": "..." }
-{ "statusCode": 401, "message": "Session expired, please log in again", "timestamp": "..." }
+{ "statusCode": 401, "errorCode": "INVALID_REFRESH_TOKEN", "message": "Invalid or expired session", "timestamp": "..." }
+{ "statusCode": 401, "errorCode": "COMPROMISED_SESSION", "message": "Session expired, please log in again", "timestamp": "..." }
 ```
 
 ## Notas

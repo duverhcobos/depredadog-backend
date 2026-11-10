@@ -84,7 +84,7 @@
 
 ### 404 — No existe o es de otro usuario
 ```json
-{ "statusCode": 404, "message": "Order not found", "timestamp": "..." }
+{ "statusCode": 404, "errorCode": "ORDER_NOT_FOUND", "message": "Order not found", "timestamp": "..." }
 ```
 
 ## Notas

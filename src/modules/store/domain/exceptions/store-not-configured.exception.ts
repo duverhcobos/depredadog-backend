@@ -5,6 +5,6 @@ import { DomainException } from '../../../../common/exceptions/domain.exception'
 // de error; nunca un "abierto" falso).
 export class StoreNotConfiguredException extends DomainException {
   constructor() {
-    super('Store is not configured', 404);
+    super('Store is not configured', 404, 'STORE_NOT_CONFIGURED');
   }
 }

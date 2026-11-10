@@ -67,6 +67,8 @@ describe('POST /auth/login (e2e)', () => {
     expect((unknownEmail.body as { message: string }).message).toBe(
       'Invalid credentials',
     );
+    expect(wrongPass.body.errorCode).toBe('INVALID_CREDENTIALS');
+    expect(unknownEmail.body.errorCode).toBe('INVALID_CREDENTIALS');
   });
 
   it('rechaza login sin email verificado', async () => {

@@ -2,6 +2,6 @@ import { DomainException } from '../../../../common/exceptions/domain.exception'
 
 export class UserSuspendedException extends DomainException {
   constructor() {
-    super('Account is suspended', 403);
+    super('Account is suspended', 403, 'USER_SUSPENDED');
   }
 }

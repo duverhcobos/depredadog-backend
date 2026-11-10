@@ -4,6 +4,6 @@ import { DomainException } from '../../../../common/exceptions/domain.exception'
 // inexistente — no se revela que existe (idor-checklist).
 export class AddressNotFoundException extends DomainException {
   constructor() {
-    super('Address not found', 404);
+    super('Address not found', 404, 'ADDRESS_NOT_FOUND');
   }
 }

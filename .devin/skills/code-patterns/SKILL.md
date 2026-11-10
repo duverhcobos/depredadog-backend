@@ -16,10 +16,13 @@ Patrones de código clave de este backend. Usar estos ejemplos como referencia e
 
 ```typescript
 // Todas las excepciones heredan de DomainException en src/common/exceptions/
-export class XxxException extends DomainException {
-    constructor() { super('mensaje', 409); }
+export class StoreClosedException extends DomainException {
+    constructor() { super('Store is closed', 409, 'STORE_CLOSED'); }
 }
-// El DomainExceptionFilter global las captura y responde { statusCode, message, timestamp }
+// El tercer argumento errorCode (SCREAMING_SNAKE) es el contrato
+// machine-readable del body de error — toda excepción nueva lo declara.
+// El DomainExceptionFilter global las captura y responde
+// { statusCode, errorCode?, message, timestamp } (errorCode solo si lo define)
 ```
 
 ### Repositorio: interface + token

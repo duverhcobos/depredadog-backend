@@ -321,11 +321,12 @@ describe('/orders (e2e)', () => {
 
   it('POST combinaciones inválidas → 400', async () => {
     // pickup + cash
-    await postOrder(
+    const cashEnPickup = await postOrder(
       { ...pickupTransferBody(), paymentMethod: 'cash' },
       tokens.accessToken,
       400,
     );
+    expect(cashEnPickup.errorCode).toBe('INVALID_ORDER_DATA');
     // transfer sin payerPhone
     const sinPayer = pickupTransferBody();
     delete sinPayer.payerPhone;
@@ -377,6 +378,7 @@ describe('/orders (e2e)', () => {
     expect((res.body as { message: string }).message).toContain(
       'Order rejected by catalog',
     );
+    expect(res.body.errorCode).toBe('ORDER_CATALOG_VIOLATION');
 
     // modificador ajeno al producto
     res = await request(server())
@@ -660,21 +662,24 @@ describe('/orders (e2e)', () => {
     expect((again.body as { message: string }).message).toBe(
       'Order can only be cancelled while pending',
     );
+    expect(again.body.errorCode).toBe('ORDER_NOT_CANCELLABLE');
 
     // Cancelar la de otro → 404.
     const emailB = 'orders-c@test.com';
     await registerUser(app, { email: emailB });
     const tokensB = await activateAndGetTokens(app, emailB);
-    await request(server())
+    const ajena = await request(server())
       .post(`/orders/${created.id as string}/cancel`)
       .set(auth(tokensB.accessToken))
       .send({})
       .expect(404);
-    await request(server())
+    expect(ajena.body.errorCode).toBe('ORDER_NOT_FOUND');
+    const inexistente = await request(server())
       .post(`/orders/${randomUUID()}/cancel`)
       .set(auth(tokens.accessToken))
       .send({})
       .expect(404);
+    expect(inexistente.body.errorCode).toBe('ORDER_NOT_FOUND');
   });
 
   it('sin token → 401 en los 4 endpoints', async () => {
@@ -699,5 +704,6 @@ describe('/orders (e2e)', () => {
       .send(pickupTransferBody())
       .expect(409);
     expect((res.body as { message: string }).message).toBe('Store is closed');
+    expect(res.body.errorCode).toBe('STORE_CLOSED');
   });
 });

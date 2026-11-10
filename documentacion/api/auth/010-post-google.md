@@ -39,14 +39,14 @@
 
 ### 401 — Token inválido
 ```json
-{ "statusCode": 401, "message": "Invalid Google token", "timestamp": "..." }
+{ "statusCode": 401, "errorCode": "INVALID_GOOGLE_TOKEN", "message": "Invalid Google token", "timestamp": "..." }
 ```
 Incluye: firma/audiencia inválida, token expirado, `email_verified=false`, o
 endpoint sin `GOOGLE_CLIENT_IDS` configurados.
 
 ### 403 — Cuenta suspendida
 ```json
-{ "statusCode": 403, "message": "Account is suspended", "timestamp": "..." }
+{ "statusCode": 403, "errorCode": "USER_SUSPENDED", "message": "Account is suspended", "timestamp": "..." }
 ```
 
 ## Notas

@@ -10,6 +10,9 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
   refresh 30 días (rotativo — cada `POST /auth/refresh` invalida el anterior).
 - **Errores**: `{ "statusCode": N, "message": string | string[], "timestamp": "..." }`
   — `message` es **array** en errores de validación (400, un string por regla).
+  Los errores de dominio incluyen además `errorCode` opcional machine-readable
+  (`SCREAMING_SNAKE`, ej. `STORE_CLOSED`) después de `statusCode`; los errores
+  de validación, guards (401) e inesperados salen sin el campo.
 - **Rate limiting**: límites por endpoint indicados en cada doc. El global es
   100 req/min (`/health` exento).
 - **Verificación de email obligatoria**: `register` no devuelve sesión; el

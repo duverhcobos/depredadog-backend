@@ -38,14 +38,14 @@
 
 ### 401 — Credenciales inválidas
 ```json
-{ "statusCode": 401, "message": "Invalid credentials", "timestamp": "..." }
+{ "statusCode": 401, "errorCode": "INVALID_CREDENTIALS", "message": "Invalid credentials", "timestamp": "..." }
 ```
 Mismo mensaje para email inexistente, password errado o cuenta solo-Google (anti-enumeración).
 
 ### 403 — Email no verificado / cuenta suspendida
 ```json
-{ "statusCode": 403, "message": "Email is not verified", "timestamp": "..." }
-{ "statusCode": 403, "message": "Account is suspended", "timestamp": "..." }
+{ "statusCode": 403, "errorCode": "EMAIL_NOT_VERIFIED", "message": "Email is not verified", "timestamp": "..." }
+{ "statusCode": 403, "errorCode": "USER_SUSPENDED", "message": "Account is suspended", "timestamp": "..." }
 ```
 
 ## Notas

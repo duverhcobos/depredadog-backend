@@ -43,5 +43,6 @@
 
 ### 401 — Sin token, token inválido o sesión muerta
 ```json
-{ "statusCode": 401, "message": "Session is no longer valid", "timestamp": "..." }
+{ "statusCode": 401, "errorCode": "SESSION_NOT_FOUND", "message": "Session is no longer valid", "timestamp": "..." }
 ```
+El 401 del guard (sin token o firma inválida) sale sin `errorCode`: `{ "statusCode": 401, "message": "Unauthorized", "timestamp": "..." }`.

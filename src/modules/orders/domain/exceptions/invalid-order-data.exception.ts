@@ -4,6 +4,6 @@ import { DomainException } from '../../../../common/exceptions/domain.exception'
 // delivery sin dirección…)
 export class InvalidOrderDataException extends DomainException {
   constructor(detail: string) {
-    super(detail, 400);
+    super(detail, 400, 'INVALID_ORDER_DATA');
   }
 }

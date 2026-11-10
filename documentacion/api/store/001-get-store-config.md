@@ -104,6 +104,7 @@ Formato estándar `{ "statusCode": 401, "message": "Unauthorized" }`.
 ```json
 {
   "statusCode": 404,
+  "errorCode": "STORE_NOT_CONFIGURED",
   "message": "Store is not configured",
   "timestamp": "2026-11-05T22:00:00.000Z"
 }

@@ -33,7 +33,7 @@
 
 ### 400 — Código inválido/expirado/consumido
 ```json
-{ "statusCode": 400, "message": "Invalid or expired code", "timestamp": "..." }
+{ "statusCode": 400, "errorCode": "INVALID_AUTH_CODE", "message": "Invalid or expired code", "timestamp": "..." }
 ```
 Mismo mensaje para cualquier fallo (usuario inexistente, suspendido, código
 errado/expirado/consumido) — no revela qué falló.
