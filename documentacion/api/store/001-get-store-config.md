@@ -9,8 +9,8 @@
 |---|---|
 | **Método** | `GET` |
 | **Ruta** | `/store/config` |
-| **Autenticación** | Bearer token requerido |
-| **Rol requerido** | cualquier usuario autenticado |
+| **Autenticación** | Pública (propuesta 020) |
+| **Rol requerido** | — |
 | **Rate limit** | default global (100 req/min) |
 | **Implementado** | propuesta 013 |
 | **Integrado en app** | ⬜ pendiente |
@@ -94,10 +94,6 @@ Sin body ni query params.
 | `today.dayOfWeek` | `0`=domingo … `6`=sábado (convención JS `getDay()`). |
 | `opensAt` / `closesAt` | `'HH:MM'` hora local del negocio. En días `isClosed=true` son valores centinela (`00:00`) — ignorarlos. |
 | `weeklyHours` | Siempre las 7 filas ordenadas por `dayOfWeek`; `isClosed=true` = el local no abre ese día. |
-
-### 401 — Sin token / token inválido
-
-Formato estándar `{ "statusCode": 401, "message": "Unauthorized" }`.
 
 ### 404 — Negocio sin configurar
 

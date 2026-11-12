@@ -62,12 +62,14 @@ describe('GET /store/config (e2e)', () => {
     await app.close();
   });
 
-  it('rechaza sin token (401)', async () => {
+  it('GET /store/config → 200 sin Authorization (público §020)', async () => {
+    await seedStore();
+
     const res = await request(app.getHttpServer() as App)
       .get('/store/config')
-      .expect(401);
-    // El 401 del guard no es DomainException — errorCode no se inventa.
-    expect(res.body.errorCode).toBeUndefined();
+      .expect(200);
+
+    expect((res.body as { name: string }).name).toBe('Depredadog');
   });
 
   it('sin fila de store_settings → 404 store not configured', async () => {

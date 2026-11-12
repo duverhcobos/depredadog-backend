@@ -103,10 +103,13 @@ describe('GET /catalog (e2e)', () => {
     await app.close();
   });
 
-  it('rechaza sin token (401)', async () => {
-    await request(app.getHttpServer() as App)
+  it('GET /catalog → 200 sin Authorization (público §020)', async () => {
+    const res = await request(app.getHttpServer() as App)
       .get('/catalog')
-      .expect(401);
+      .expect(200);
+
+    // Sin seed el menú viene vacío — el punto es que el guard deja pasar.
+    expect((res.body as { categories: unknown[] }).categories).toEqual([]);
   });
 
   it('devuelve el menú completo con el árbol de modificadores', async () => {

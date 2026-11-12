@@ -10,8 +10,8 @@
 |---|---|
 | **Método** | `GET` |
 | **Ruta** | `/catalog` |
-| **Autenticación** | Bearer token requerido |
-| **Rol requerido** | cualquier usuario autenticado |
+| **Autenticación** | Pública (propuesta 020) |
+| **Rol requerido** | — |
 | **Rate limit** | default global (100 req/min) |
 | **Implementado** | propuesta 007 |
 | **Integrado en app** | ⬜ pendiente |
@@ -86,10 +86,6 @@ Sin body ni query params.
 | `options[].isReplaceable` | `false` = si el ingrediente incluido se agota NO admite cambio por un adicional gratis — el dueño marca el producto agotado (corazón del producto: salchicha, pan). La app solo muestra el ↔ de reemplazo cuando es `true`. |
 | `options[].isReplacementEligible` | `false` = la opción no se lista como reemplazo gratis de otra agotada (salchicha — el doble se cobra). La app filtra el picker de reemplazos por este flag. |
 | `options[].isEssential` | `true` = ingrediente esencial (salchicha, pan): si una opción **incluida** (`includedByDefault`) con este flag llega `isAvailable=false`, la app deriva el producto entero como agotado — sin él no hay producto que vender. Como extra agotado solo se deshabilita/delista; el `isAvailable` del producto queda como lo dejó el dueño. |
-
-### 401 — Sin token / token inválido
-
-Formato estándar `{ "statusCode": 401, "message": "Unauthorized" }`.
 
 ## Notas
 
