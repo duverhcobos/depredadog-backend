@@ -10,6 +10,8 @@ import {
   STORE_REPOSITORY,
 } from '../../../store/domain/repositories/store.repository.interface';
 import { Order } from '../../domain/entities/order.entity';
+import { OrderChannel } from '../../domain/enums/order-channel.enum';
+import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { InvalidStatusTransitionException } from '../../domain/exceptions/invalid-status-transition.exception';
 import { OrderNotFoundException } from '../../domain/exceptions/order-not-found.exception';
@@ -26,12 +28,16 @@ export interface UpdateOrderStatusCommand {
   cancelReason?: string;
 }
 
-// Matriz del flujo corto SIN 'preparing' (decisión usuario §019):
-// pending→confirmed→done + cancelled en cualquier punto no terminal.
+// pending→confirmed→preparing→ready→done + cancelled en cualquier
+// no terminal — el kanban Cocina de 5 carriles (§022): 'preparing'
+// pasa a ser real (decisión del dueño, revoca §019) y 'ready' es el
+// paso intermedio que la app etiqueta por serviceType
+// ("Va en camino"/"Servido"/"Listo p/recoger").
 const ALLOWED: Record<OrderStatus, OrderStatus[]> = {
   pending: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  confirmed: [OrderStatus.DONE, OrderStatus.CANCELLED],
-  preparing: [OrderStatus.DONE, OrderStatus.CANCELLED], // inalcanzable por contrato
+  confirmed: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+  preparing: [OrderStatus.READY, OrderStatus.CANCELLED],
+  ready: [OrderStatus.DONE, OrderStatus.CANCELLED],
   done: [],
   cancelled: [],
 };
@@ -64,6 +70,17 @@ export class UpdateOrderStatusUseCase {
     ) {
       throw new PaymentNotSettledException();
     }
+    // Puerta de confirmación §037.D: la recogida presencial sin
+    // cobrar no confirma — el cobro era el único bloqueo; el camino
+    // autorizado es confirm-payment (cobra Y avanza en un hecho).
+    if (
+      cmd.to === OrderStatus.CONFIRMED &&
+      order.channel === OrderChannel.PRESENCIAL &&
+      order.serviceType === OrderServiceType.PICKUP &&
+      order.payment?.status !== PaymentStatus.PAID
+    ) {
+      throw new PaymentNotSettledException();
+    }
     // Cancel con pago pendiente: el pago muere con la orden (claim
     // condicional igual que el cancel del cliente). Un 'paid' NO se
     // toca — el reembolso se resuelve manual (pendiente).
@@ -75,7 +92,10 @@ export class UpdateOrderStatusUseCase {
     }
     // UPDATE condicional: affected=0 → el estado cambió entre la
     // lectura y el write (webhook o doble tap del dueño) → 409, no
-    // un write ciego.
+    // un write ciego. El par status+statusChangedAt viaja atómico
+    // en el mismo UPDATE (§037.A — cada carril ordena por cuándo
+    // entró el pedido a ese estado).
+    order.statusChangedAt = new Date();
     const moved = await this.orders.transitionStatus(order, cmd.to);
     if (!moved) throw new InvalidStatusTransitionException();
     order.status = cmd.to;

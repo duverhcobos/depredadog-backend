@@ -1,3 +1,4 @@
+import { Address } from '../../../auth/domain/entities/address.entity';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { PaymentMethod } from '../../../payments/domain/enums/payment-method.enum';
 import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
@@ -27,6 +28,7 @@ describe('OrderMapper', () => {
     o.deliveryFee = 2000;
     o.discount = 0;
     o.total = 18000;
+    o.statusChangedAt = new Date('2026-11-07T20:10:00Z');
     o.createdAt = new Date('2026-11-07T20:00:00Z');
 
     const m = new OrderItemModifier();
@@ -78,6 +80,7 @@ describe('OrderMapper', () => {
     expect(dto.deliveryFee).toBe(2000);
     expect(dto.discount).toBe(0);
     expect(dto.total).toBe(18000);
+    expect(dto.statusChangedAt).toEqual(new Date('2026-11-07T20:10:00Z'));
     expect(dto.createdAt).toEqual(new Date('2026-11-07T20:00:00Z'));
 
     expect(dto.items).toHaveLength(1);
@@ -135,9 +138,63 @@ describe('OrderMapper', () => {
     expect(dto.channel).toBe('online');
     expect(dto.tableLabel).toBe('Mesa 2');
     expect(dto.customerName).toBe('Ana Uno');
+    // §037.B — sin ficha de dirección los tres campos salen null.
+    expect(dto.deliveryAddressLabel).toBeNull();
+    expect(dto.deliveryLandmark).toBeNull();
+    expect(dto.deliveryNeighborhood).toBeNull();
     // Hereda la respuesta completa del cliente.
     expect(dto.items).toHaveLength(1);
     expect(dto.payment!.providerReference).toBe('sim-ref-9');
+  });
+
+  it('toAdminResponse resuelve el desglose de dirección desde la ficha (§037.B)', () => {
+    const o = order();
+    const addr = new Address();
+    addr.label = 'Casa';
+    addr.landmark = 'Portón negro frente a la cancha';
+    addr.neighborhood = 'Barrio La Esperanza';
+    o.address = addr;
+    const dto = mapper.toAdminResponse({
+      order: o,
+      tableLabel: null,
+      customerName: 'Ana Uno',
+    });
+    expect(dto.deliveryAddressLabel).toBe('Casa');
+    expect(dto.deliveryLandmark).toBe('Portón negro frente a la cancha');
+    expect(dto.deliveryNeighborhood).toBe('Barrio La Esperanza');
+  });
+
+  it('toDayClosePreviewResponse/toDayCloseResponse arman el snapshot', () => {
+    const summary = {
+      orderCount: 2,
+      totalAmount: 30000,
+      byMethod: [
+        { method: 'cash', count: 1, amount: 14000 },
+        { method: 'transfer', count: 1, amount: 16000 },
+      ],
+      cancelledCount: 1,
+      cancelledAmount: 5000,
+      orders: [
+        { id: 'a', orderNumber: 3, total: 14000, paymentMethod: 'cash' },
+        { id: 'b', orderNumber: 4, total: 16000, paymentMethod: 'transfer' },
+      ],
+    };
+    const preview = mapper.toDayClosePreviewResponse(summary);
+    expect(preview.orderCount).toBe(2);
+    expect(preview.totalAmount).toBe(30000);
+    expect(preview.byMethod).toHaveLength(2);
+    expect(preview.orders[0].paymentMethod).toBe('cash');
+
+    const closed = mapper.toDayCloseResponse({
+      ...summary,
+      id: 'dc-1',
+      closedAt: new Date('2026-11-07T23:00:00Z'),
+      note: 'Cierre lento',
+    });
+    expect(closed.id).toBe('dc-1');
+    expect(closed.closedAt).toBe('2026-11-07T23:00:00.000Z');
+    expect(closed.note).toBe('Cierre lento');
+    expect(closed.cancelledCount).toBe(1);
   });
 
   it('toAdminListResponse arma el envelope con ítems admin', () => {

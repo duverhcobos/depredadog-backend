@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
 import { Order } from '../../domain/entities/order.entity';
+import { OrderChannel } from '../../domain/enums/order-channel.enum';
+import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { PaymentNotFoundException } from '../../domain/exceptions/payment-not-found.exception';
 import {
@@ -41,6 +43,8 @@ describe('ResolveOrderPaymentUseCase', () => {
       transitionStatus: jest.fn(),
       confirmPayment: jest.fn(),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [
@@ -68,6 +72,24 @@ describe('ResolveOrderPaymentUseCase', () => {
     expect(saved.payment?.confirmedAt).toBeInstanceOf(Date);
     expect(saved.payment?.providerPayload).toEqual({ raw: 'body' });
     expect(saved.status).toBe(OrderStatus.CONFIRMED);
+    expect(saved.statusChangedAt).toBeInstanceOf(Date);
+    expect(orders.resolvePaymentAggregate).toHaveBeenCalledWith(order);
+  });
+
+  it('approved en recogida presencial → payment paid pero la orden SIGUE pending (§037.D)', async () => {
+    const order = pendingOrder();
+    order.channel = OrderChannel.PRESENCIAL;
+    order.serviceType = OrderServiceType.PICKUP;
+    orders.findByProviderReference.mockResolvedValue(order);
+    const saved = await useCase.execute({
+      provider: 'sim',
+      reference: 'sim-ref-1',
+      status: 'approved',
+    });
+    // La bandeja es el aviso — el dueño confirma a mano aunque el
+    // pago ya llegó.
+    expect(saved.payment?.status).toBe(PaymentStatus.PAID);
+    expect(saved.status).toBe(OrderStatus.PENDING);
     expect(orders.resolvePaymentAggregate).toHaveBeenCalledWith(order);
   });
 

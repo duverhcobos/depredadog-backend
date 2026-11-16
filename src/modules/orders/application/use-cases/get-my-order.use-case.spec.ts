@@ -25,6 +25,8 @@ describe('GetMyOrderUseCase', () => {
       transitionStatus: jest.fn(),
       confirmPayment: jest.fn(),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     const module = await Test.createTestingModule({
       providers: [

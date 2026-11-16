@@ -6,6 +6,13 @@ export class AdminOrderResponseDto extends OrderResponseDto {
   channel!: string;
   tableLabel!: string | null;
   customerName!: string | null;
+  /** Desglose de la dirección del domicilio (§037.B) — resueltos
+   * desde addresses cuando addressId existe; null si el pedido fue
+   * tomado por teléfono sin ficha (deliveryAddress crudo es el
+   * fallback). */
+  deliveryAddressLabel!: string | null;
+  deliveryLandmark!: string | null;
+  deliveryNeighborhood!: string | null;
 }
 
 export class AdminOrderListResponseDto {

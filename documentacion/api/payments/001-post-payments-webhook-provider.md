@@ -2,7 +2,10 @@
 
 > Webhook del proveedor de cobro por push: notifica el resultado y el
 > servidor resuelve el pago del pedido en una sola transacción —
-> `approved` → payment `paid` + orden `confirmed`;
+> `approved` → payment `paid` + orden `confirmed`
+> (excepción §037.D: la **recogida presencial** queda en `pending`
+> aunque el pago llegue — la bandeja es el aviso y el dueño la
+> confirma a mano);
 > `rejected`/`expired`/`cancelled` → payment `failed` + orden
 > `cancelled`. **Idempotente**: un webhook repetido responde 200 sin
 > tocar nada. Público (sin JWT) — la autenticación es el secreto
@@ -65,6 +68,7 @@
   "total": 16000,
   "notes": null,
   "cancelReason": null,
+  "statusChangedAt": "2026-11-10T14:19:55.020Z",
   "createdAt": "2026-11-10T14:18:13.334Z",
   "items": [],
   "payment": {

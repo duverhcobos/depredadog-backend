@@ -9,9 +9,15 @@ import {
   AdminOrderResponseDto,
 } from '../dtos/admin-order-response.dto';
 import {
+  DayClosePreviewResponseDto,
+  DayCloseResponseDto,
+} from '../dtos/day-close.response.dto';
+import {
   AdminOrderListResult,
   AdminOrderResult,
 } from '../use-cases/admin-order-results';
+import { CloseDayResult } from '../use-cases/close-day.use-case';
+import { DayCloseSummary } from '../use-cases/preview-day-close.use-case';
 import {
   OrderItemModifierResponseDto,
   OrderItemResponseDto,
@@ -38,6 +44,7 @@ export class OrderMapper {
     dto.total = order.total;
     dto.notes = order.notes;
     dto.cancelReason = order.cancelReason;
+    dto.statusChangedAt = order.statusChangedAt;
     dto.createdAt = order.createdAt;
     dto.items = order.items.map((i) => this.toItemResponse(i));
     dto.payment = order.payment ? this.toPaymentResponse(order.payment) : null;
@@ -66,6 +73,36 @@ export class OrderMapper {
     dto.channel = result.order.channel;
     dto.tableLabel = result.tableLabel;
     dto.customerName = result.customerName;
+    // §037.B — desglose del domicilio desde la ficha addresses (join
+    // anti-N+1 del repositorio); null en pickup/dine_in o pedidos
+    // tomados por teléfono sin ficha (deliveryAddress es el fallback).
+    dto.deliveryAddressLabel = result.order.address?.label ?? null;
+    dto.deliveryLandmark = result.order.address?.landmark ?? null;
+    dto.deliveryNeighborhood = result.order.address?.neighborhood ?? null;
+    return dto;
+  }
+
+  // El preview y el cierre comparten cuerpo; el cierre agrega
+  // id/closedAt/note del registro persistido.
+  toDayClosePreviewResponse(
+    summary: DayCloseSummary,
+  ): DayClosePreviewResponseDto {
+    const dto = new DayClosePreviewResponseDto();
+    dto.orderCount = summary.orderCount;
+    dto.totalAmount = summary.totalAmount;
+    dto.byMethod = summary.byMethod.map((m) => ({ ...m }));
+    dto.cancelledCount = summary.cancelledCount;
+    dto.cancelledAmount = summary.cancelledAmount;
+    dto.orders = summary.orders.map((o) => ({ ...o }));
+    return dto;
+  }
+
+  toDayCloseResponse(result: CloseDayResult): DayCloseResponseDto {
+    const dto = new DayCloseResponseDto();
+    Object.assign(dto, this.toDayClosePreviewResponse(result));
+    dto.id = result.id;
+    dto.closedAt = result.closedAt.toISOString();
+    dto.note = result.note;
     return dto;
   }
 

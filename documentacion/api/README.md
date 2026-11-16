@@ -53,3 +53,5 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 | POST | `/admin/orders/:id/confirm-payment` | [003](admin/003-post-admin-orders-id-confirm-payment.md) | 🔶 backend listo — sin integrar |
 | POST | `/admin/orders` | [004](admin/004-post-admin-orders.md) | 🔶 backend listo — sin integrar |
 | GET | `/admin/tables` | [005](admin/005-get-admin-tables.md) | 🔶 backend listo — sin integrar |
+| GET | `/admin/day-close` | [006](admin/006-get-admin-day-close.md) | 🔶 backend listo — sin integrar |
+| POST | `/admin/day-close` | [007](admin/007-post-admin-day-close.md) | 🔶 backend listo — sin integrar |

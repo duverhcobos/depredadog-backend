@@ -347,7 +347,8 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `delivery_address` | text | NULL | Snapshot inmutable de la dirección al pedir |
 | `delivery_location_link` | text | NULL | Link de ubicación (pin de Google) que manda el cliente en delivery — solo lo ve el repartidor |
 | `client_request_id` | uuid | NULL | Idempotency key que genera la app por pedido — `UNIQUE(customer_id, client_request_id)` parcial evita dobles POST |
-| `status` | enum `order_status` | NOT NULL, default `pending` | `pending` → `confirmed` → `done`; `cancelled` en cualquier punto. `preparing` existe en el enum como reserva (cocina dedicada futura) pero ninguna transición lo produce |
+| `status` | enum `order_status` | NOT NULL, default `pending` | `pending` → `confirmed` → `preparing` → `ready` → `done`; `cancelled` desde cualquier no terminal (kanban §022) |
+| `status_changed_at` | timestamptz | NOT NULL | Cuándo entró al estado actual — sembrado con `created_at` al nacer y re-sellado en cada transición (§037.A); la cola del kanban ordena por él |
 | `subtotal` | numeric(10,2) | NOT NULL | |
 | `delivery_fee` | numeric(10,2) | NOT NULL, default 0 | Snapshot del fee al momento del pedido |
 | `discount` | numeric(10,2) | NOT NULL, default 0 | Lo llena `promotions` |
@@ -355,9 +356,10 @@ Pedidos con canal dual (online/presencial), ítems con snapshot de precios, modi
 | `notes` | text | NULL | "Timbre roto", "sin picante" |
 | `contact_phone` | varchar(20) | NULL | Quién recibe el pedido — la app lo exige en delivery (§024); NULL en pickup/presencial |
 | `cancel_reason` | text | NULL | |
+| `day_close_id` | uuid FK → `day_closes` | NULL | Cierre de caja que archivó la orden (§022) — NULL mientras el terminal sigue en Cocina; los `cancelled` también se estampan |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
-Constraints/índices (implementado, propuesta 013): `UNIQUE(order_date, order_number)` (consecutivo diario por día de negocio), `INDEX(status, created_at)` (cola de cocina), `INDEX(customer_id, created_at)` (historial del cliente), índice parcial `INDEX(table_id) WHERE status NOT IN ('done','cancelled')` (mesa ocupada), índice parcial `UNIQUE(customer_id, client_request_id) WHERE client_request_id IS NOT NULL` (idempotencia del POST /orders, propuesta 015).
+Constraints/índices (implementado, propuesta 013): `UNIQUE(order_date, order_number)` (consecutivo diario por día de negocio), `INDEX(status, created_at)` (cola de cocina), `INDEX(customer_id, created_at)` (historial del cliente), índice parcial `INDEX(table_id) WHERE status NOT IN ('done','cancelled')` (mesa ocupada), índice parcial `UNIQUE(customer_id, client_request_id) WHERE client_request_id IS NOT NULL` (idempotencia del POST /orders, propuesta 015), índice parcial `INDEX(day_close_id) WHERE day_close_id IS NULL` (terminales pendientes de cierre, propuesta 022).
 
 ### `order_items`
 
@@ -393,9 +395,31 @@ Modificadores elegidos por ítem — filas hijas, consultables para reportes y c
 
 Índices: `INDEX(order_item_id)`, `INDEX(option_id)` (reportes por ingrediente).
 
+### `day_closes`
+
+Cierre de caja manual del día (§022) — snapshot financiero auditable que archiva los terminales del periodo.
+
+| Columna | Tipo | Null | Notas |
+|---|---|---|---|
+| `id` | uuid PK | | |
+| `closed_by` | uuid FK → `users` | NOT NULL | Admin que cerró |
+| `closed_at` | timestamptz | NOT NULL | Momento del cierre |
+| `order_count` | int | NOT NULL, default 0 | `done` reclamados (los que suman) |
+| `total_amount` | numeric(12,2) | NOT NULL, default 0 | Σ `total` de los `done` |
+| `cancelled_count` | int | NOT NULL, default 0 | `cancelled` reclamados — contexto, no suma |
+| `cancelled_amount` | numeric(12,2) | NOT NULL, default 0 | Σ `total` de los `cancelled` |
+| `method_breakdown` | jsonb | NOT NULL, default '[]' | `[{method, count, amount}]` solo de los `done` — `'unknown'` si un pedido no tuviera pago |
+| `note` | text | NULL | Nota libre del cierre |
+| `created_at` | timestamptz | NOT NULL | |
+
+Sin `UPDATE`/`DELETE` por API — el registro es bitácora inmutable. Cierre vacío permitido (ceros); no hay endpoint de listado histórico de cierres.
+
 ### Decisiones tomadas (`orders`)
 
-- **Flujo corto**: `pending → confirmed → done` + `cancelled`. Sin `out_for_delivery` — el delivery lo hace el admin. `preparing` queda como miembro reservado del enum (cocina dedicada futura): ninguna transición lo produce y la app ya tolera su aparición.
+- **Kanban de 5 carriles** (§022, revoca el flujo corto de §019): `pending → confirmed → preparing → ready → done` + `cancelled` desde cualquier no terminal. `preparing` pasó a ser real y `ready` es el paso intermedio que la app etiqueta por `service_type` ("va en camino"/"servido"/"listo p/recoger").
+- **`status_changed_at` gobierna la cola** (§037.A): cada carril ordena por cuándo entró el pedido al estado; se siembra con `created_at` al nacer y se re-sella atómico con cada transición.
+- **Cierre de caja como archivo** (§022): `done` permanece en la cola `active` hasta que un `POST /admin/day-close` lo estampa con `day_close_id`; `cancelled` es history por status pero también se estampa para atribuirlo al periodo.
+- **El cobro avanza la orden** (§037.D): `confirm-payment` cobra Y transiciona en el mismo hecho — `pending` presencial-pickup → `confirmed`, `ready` → `done`; recogida presencial nace `pending` (la bandeja es el aviso).
 - **Mesa = atributo del pedido**: el admin toma el pedido y asigna `table_id`; sin "cuenta abierta" — si la mesa pide algo más, es otro pedido a la misma mesa.
 - **Snapshots en ítems** (`product_name`, `unit_price`, `option_name`, `price_delta`) y en la orden (`delivery_fee`, `delivery_address`): renombrar productos o editar direcciones no altera el histórico.
 - **`channel` ≠ `service_type`**: canal = quién lo creó (app vs admin); servicio = cómo se consume. Cubre "pedido por teléfono para recoger" (`presencial` + `pickup`).

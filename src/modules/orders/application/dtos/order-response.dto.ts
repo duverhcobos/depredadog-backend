@@ -43,6 +43,9 @@ export class OrderResponseDto {
   total!: number;
   notes!: string | null;
   cancelReason!: string | null;
+  /** Cuándo entró al estado actual — la app ordena cada carril del
+   * kanban por este campo (o placedAt si nació en el estado). */
+  statusChangedAt!: Date;
   createdAt!: Date;
   items!: OrderItemResponseDto[];
   payment!: OrderPaymentResponseDto | null;

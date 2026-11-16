@@ -1,9 +1,12 @@
 # GET /admin/orders
 
-> Cola del local — todos los pedidos sin filtro de cliente: los
-> `active` en curso (sin paginar — un pending de ayer no se pierde)
-> e `history` terminados paginados. Cada ítem es la vista del dueño:
-> lo que ve el cliente + `channel`, `tableLabel` y `customerName`.
+> Cola del local — todos los pedidos sin filtro de cliente. `active`
+> es el kanban de Cocina: los pedidos en curso (`pending` → `ready`)
+> **más los `done` aún sin cerrar** (§022 — el entregado sigue en la
+> cola hasta el cierre de caja). `history` = `cancelled` + `done`
+> ya cerrados, paginado. Cada ítem es la vista del dueño: lo que ve
+> el cliente + `channel`, `tableLabel`, `customerName` y el desglose
+> de la dirección del domicilio.
 
 | | |
 |---|---|
@@ -12,14 +15,14 @@
 | **Autenticación** | Bearer requerido |
 | **Rol requerido** | `admin` |
 | **Rate limit** | global (100/min) |
-| **Implementado** | propuesta 019 |
+| **Implementado** | propuestas 019 + 022 (+§037) |
 
 ## Request
 
 ### Query params
 | Campo | Tipo | Default | Validación | Descripción |
 |-------|------|---------|------------|-------------|
-| `bucket` | string | `active` | `active` \| `history` | `active` = `pending`/`confirmed`/`preparing`; `history` = `done`/`cancelled` |
+| `bucket` | string | `active` | `active` \| `history` | `active` = en curso + `done` sin cerrar; `history` = `cancelled` + `done` cerrados |
 | `page` | int | `1` | `Min(1)` | Página (solo aplica a `history`) |
 | `limit` | int | `20` | `Min(1)`, `Max(50)` | Tamaño de página (solo `history`) |
 
@@ -28,9 +31,11 @@ Sin `?bucket` equivale a `bucket=active`.
 ## Responses
 
 ### 200 — `bucket=active`
-Pedidos vivos de CUALQUIER fecha y canal, en orden de llegada
-(`createdAt` ascendente — la cocina atiende FIFO). `modifiers` viaja
-vacío en el listado; el detalle completo sale por el PATCH/POST que
+Pedidos vivos de CUALQUIER fecha y canal ordenados por
+`statusChangedAt` ascendente (§037.A — cada carril del kanban ordena
+por cuándo entró el pedido a su estado, no por `createdAt`: un
+`done` recién entregado no salta al tope). `modifiers` viaja vacío
+en el listado; el detalle completo sale por el PATCH/POST que
 devuelve la misma forma.
 
 ```json
@@ -51,6 +56,7 @@ devuelve la misma forma.
       "total": 16000,
       "notes": "Tocar el timbre dos veces",
       "cancelReason": null,
+      "statusChangedAt": "2026-11-07T14:18:13.390Z",
       "createdAt": "2026-11-07T14:18:13.390Z",
       "items": [
         {
@@ -77,13 +83,16 @@ devuelve la misma forma.
       },
       "channel": "online",
       "tableLabel": null,
-      "customerName": "Test User"
+      "customerName": "Test User",
+      "deliveryAddressLabel": "Casa",
+      "deliveryLandmark": "Casa blanca frente a la cancha",
+      "deliveryNeighborhood": "Barrio Centro"
     },
     {
       "id": "91b2c4d5-1111-4596-aea8-0000000000aa",
       "orderNumber": 3,
       "orderDate": "2026-11-07",
-      "status": "confirmed",
+      "status": "done",
       "serviceType": "dine_in",
       "contactPhone": null,
       "deliveryAddress": null,
@@ -94,6 +103,7 @@ devuelve la misma forma.
       "total": 28000,
       "notes": "Sin picante en uno",
       "cancelReason": null,
+      "statusChangedAt": "2026-11-07T14:58:44.010Z",
       "createdAt": "2026-11-07T14:25:01.010Z",
       "items": [
         {
@@ -112,7 +122,7 @@ devuelve la misma forma.
       "payment": {
         "id": "ee66ff77-7332-435d-9e06-888899990000",
         "method": "cash",
-        "status": "pending",
+        "status": "paid",
         "amount": 28000,
         "payerPhone": null,
         "provider": null,
@@ -120,7 +130,10 @@ devuelve la misma forma.
       },
       "channel": "presencial",
       "tableLabel": "Mesa 1",
-      "customerName": null
+      "customerName": null,
+      "deliveryAddressLabel": null,
+      "deliveryLandmark": null,
+      "deliveryNeighborhood": null
     }
   ],
   "total": 2,
@@ -135,10 +148,18 @@ devuelve la misma forma.
   `pickup`/`delivery` o si la mesa se desactivó después.
 - `customerName`: `"Nombre Apellido"` del cliente registrado; `null`
   en pedidos presenciales (cliente sin cuenta).
+- `statusChangedAt`: cuándo entró al estado actual — la app ordena
+  cada carril del kanban por este campo.
+- `deliveryAddressLabel` / `deliveryLandmark` / `deliveryNeighborhood`
+  (§037.B): desglose de la dirección resuelto desde la ficha
+  `addresses` del pedido. `null` en `pickup`/`dine_in` y en pedidos
+  sin `addressId` (teléfono) — el fallback visual es el `deliveryAddress`
+  crudo (snapshot `"landmark (neighborhood)"`).
 
 ### 200 — `bucket=history` (paginado)
-`done`/`cancelled` recientes primero; `total` es el conteo real del
-bucket. History vacío → `{ "items": [], "total": 0, "page": 1, "limit": 20 }`.
+`cancelled` (cualquier fecha) + `done` con cierre de caja, recientes
+primero; `total` es el conteo real del bucket. History vacío →
+`{ "items": [], "total": 0, "page": 1, "limit": 20 }`.
 
 ### 400 — Query inválida
 `message` array (`bucket` fuera de `active|history`, `page`/`limit`
@@ -160,8 +181,12 @@ fuera de rango).
   presenciales (estos con `customer_id` NULL aparecen igual).
 - **`active` no pagina** — acotado por naturaleza; `page`/`limit` se
   ignoran ahí aunque el envelope los reporta.
-- **`preparing` puede aparecer** en `status` — el enum lo conserva
-  como reserva aunque ninguna transición lo produce hoy; consumir
-  tolerante.
+- **`done` no sale solo** — queda en `active` (con `payment.paid`)
+  hasta que `POST /admin/day-close` lo archive; entonces migra a
+  `history`. `cancelled` es history desde el momento del cancel — el
+  cierre solo lo estampa con su `day_close_id` para la auditoría.
+- **`preparing`/`ready` son estados reales** desde §022 — la app los
+  etiqueta por `serviceType` ("preparando" → "va en
+  camino"/"servido"/"listo p/recoger").
 - **`payment` puede ser `null`** en pedidos viejos sin fila de pago —
   consumir con null-check.

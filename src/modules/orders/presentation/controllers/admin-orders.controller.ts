@@ -21,7 +21,12 @@ import {
   AdminOrderResponseDto,
 } from '../../application/dtos/admin-order-response.dto';
 import { AdminTablesResponseDto } from '../../application/dtos/admin-tables.response.dto';
+import { CloseDayDto } from '../../application/dtos/close-day.dto';
 import { CreateInPersonOrderDto } from '../../application/dtos/create-in-person-order.dto';
+import {
+  DayClosePreviewResponseDto,
+  DayCloseResponseDto,
+} from '../../application/dtos/day-close.response.dto';
 import { ListAdminOrdersQueryDto } from '../../application/dtos/list-admin-orders.query.dto';
 import { UpdateOrderStatusDto } from '../../application/dtos/update-order-status.dto';
 import { OrdersService } from '../../application/services/orders.service';
@@ -71,5 +76,19 @@ export class AdminOrdersController {
   @Get('tables')
   listTables(): Promise<AdminTablesResponseDto> {
     return this.ordersService.listTables();
+  }
+
+  @Get('day-close')
+  previewDayClose(): Promise<DayClosePreviewResponseDto> {
+    return this.ordersService.previewDayClose();
+  }
+
+  @Post('day-close')
+  @HttpCode(201)
+  closeDay(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CloseDayDto,
+  ): Promise<DayCloseResponseDto> {
+    return this.ordersService.closeDay(user.userId, dto);
   }
 }

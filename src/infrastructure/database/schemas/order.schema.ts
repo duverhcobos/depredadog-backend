@@ -84,7 +84,26 @@ export const OrderSchema = new EntitySchema<Order>({
       type: 'uuid',
       nullable: true,
     },
+    dayCloseId: { name: 'day_close_id', type: 'uuid', nullable: true },
+    // Cuándo entró al estado actual — la cola del kanban ordena cada
+    // carril por este campo, no por created_at (§037.A).
+    statusChangedAt: { name: 'status_changed_at', type: 'timestamptz' },
     createdAt: { name: 'created_at', type: 'timestamptz', createDate: true },
     updatedAt: { name: 'updated_at', type: 'timestamptz', updateDate: true },
+  },
+  relations: {
+    // FKs declaradas como columna arriba; la relación existe para el
+    // join anti-N+1 de la vista admin (dirección del domicilio) y el
+    // cierre que archivó la orden.
+    address: {
+      type: 'many-to-one',
+      target: 'Address',
+      joinColumn: { name: 'address_id' },
+    },
+    dayClose: {
+      type: 'many-to-one',
+      target: 'DayClose',
+      joinColumn: { name: 'day_close_id' },
+    },
   },
 });

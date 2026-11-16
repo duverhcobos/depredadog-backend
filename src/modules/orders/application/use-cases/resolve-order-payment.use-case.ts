@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PaymentStatus } from '../../../payments/domain/enums/payment-status.enum';
 import { WebhookStatus } from '../../../payments/domain/enums/webhook-status.enum';
 import { Order } from '../../domain/entities/order.entity';
+import { OrderChannel } from '../../domain/enums/order-channel.enum';
+import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { PaymentNotFoundException } from '../../domain/exceptions/payment-not-found.exception';
 import {
@@ -51,13 +53,21 @@ export class ResolveOrderPaymentUseCase {
       order.payment.confirmedAt = new Date();
       // Solo un pedido vivo se confirma — si el cliente ya lo canceló
       // el pago aprobado queda registrado sin resucitar la orden.
-      if (order.status === OrderStatus.PENDING) {
+      // Excepción §037.D: la recogida presencial queda en la bandeja
+      // aunque el pago llegue — el dueño la confirma a mano (PATCH o
+      // confirm-payment, que cobra y avanza); la bandeja es el aviso.
+      if (
+        order.status === OrderStatus.PENDING &&
+        !this.isPresencialPickup(order)
+      ) {
         order.status = OrderStatus.CONFIRMED;
+        order.statusChangedAt = new Date();
       }
     } else {
       order.payment.status = PaymentStatus.FAILED;
       if (order.status === OrderStatus.PENDING) {
         order.status = OrderStatus.CANCELLED;
+        order.statusChangedAt = new Date();
         order.cancelReason = CANCEL_REASON[cmd.status];
       }
     }
@@ -72,5 +82,12 @@ export class ResolveOrderPaymentUseCase {
       cmd.reference,
     );
     return fresh ?? order;
+  }
+
+  private isPresencialPickup(order: Order): boolean {
+    return (
+      order.channel === OrderChannel.PRESENCIAL &&
+      order.serviceType === OrderServiceType.PICKUP
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { EntityManager } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 
@@ -24,8 +25,8 @@ export interface IOrderRepository {
    */
   createAggregate(order: Order): Promise<Order>;
   /**
-   * Mis pedidos. bucket 'active' = pending|confirmed|preparing sin
-   * paginar (acotado por naturaleza); 'history' = done|cancelled
+   * Mis pedidos. bucket 'active' = pending|confirmed|preparing|ready
+   * sin paginar (acotado por naturaleza); 'history' = done|cancelled
    * paginado. Incluye items (sin modifiers) + payment en ambos —
    * la card muestra ítems y el chip de pago.
    */
@@ -67,12 +68,32 @@ export interface IOrderRepository {
    * una orden cancelada nunca se resucita.
    */
   resolvePaymentAggregate(order: Order): Promise<Order | null>;
-  /** Cola del dueño — sin filtro de cliente (presenciales con NULL). */
+  /**
+   * Cola del dueño — sin filtro de cliente (presenciales con NULL).
+   * Buckets (§022):
+   * - active  = pending/confirmed/preparing/ready + done SIN cerrar
+   *             (el entregado sigue en Cocina hasta el cierre de caja)
+   * - history = done con day_close_id + cancelled (cualquier fecha)
+   */
   findForAdmin(
     bucket: 'active' | 'history',
     page: number,
     limit: number,
   ): Promise<OrderListPage>;
+  /** Pedidos terminales (done/cancelled) sin cerrar — preview (sin lock). */
+  findUnclosedTerminal(): Promise<Order[]>;
+  /**
+   * Claim atómico del cierre: UPDATE orders SET day_close_id
+   * WHERE status IN ('done','cancelled') AND day_close_id IS NULL
+   * dentro de `em`, luego devuelve las filas reclamadas con su
+   * payment cargado. Los cancelled se estampan para atarlos al
+   * periodo del cierre (contexto "N cancelados" del resumen) — ya
+   * vivían en historial por su status.
+   */
+  claimUnclosedTerminal(
+    dayCloseId: string,
+    em: EntityManager,
+  ): Promise<Order[]>;
   /** Vista del dueño — id solo, sin filtro de customer. */
   findById(id: string): Promise<Order | null>;
   /**

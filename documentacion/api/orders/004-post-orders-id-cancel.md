@@ -53,6 +53,7 @@ El pedido vuelve con `status: "cancelled"`, `cancelReason` lleno y
   "total": 16000,
   "notes": "Tocar el timbre dos veces",
   "cancelReason": "Ya no tengo hambre",
+  "statusChangedAt": "2026-11-07T14:25:44.102Z",
   "createdAt": "2026-11-07T14:18:13.390Z",
   "items": [
     {

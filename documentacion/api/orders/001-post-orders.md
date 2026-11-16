@@ -95,6 +95,7 @@
   "total": 16000,
   "notes": null,
   "cancelReason": null,
+  "statusChangedAt": "2026-11-07T14:18:13.334Z",
   "createdAt": "2026-11-07T14:18:13.334Z",
   "items": [
     {
@@ -149,6 +150,7 @@
   "total": 16000,
   "notes": "Tocar el timbre dos veces",
   "cancelReason": null,
+  "statusChangedAt": "2026-11-07T14:18:13.390Z",
   "createdAt": "2026-11-07T14:18:13.390Z",
   "items": [
     {
@@ -245,6 +247,9 @@ reintentar con el mismo `clientRequestId` sin dejar pedidos huérfanos.
   `priceDelta: 0` cuando el ingrediente reemplazado era incluido +
   reemplazable, el nuevo es elegible como reemplazo y el payload trae
   su `removed` en el mismo ítem.
+- **`statusChangedAt`** es el timestamptz de entrada al estado actual
+  — al nacer coincide con `createdAt`; cada transición lo re-sella
+  (§037.A — la cola del kanban ordena por él, no por `createdAt`).
 - **Snapshot de dirección**: `deliveryAddress` guarda
   `"landmark (neighborhood)"` como texto — borrar la dirección después
   no altera el pedido. `deliveryLocationLink` viaja aparte.

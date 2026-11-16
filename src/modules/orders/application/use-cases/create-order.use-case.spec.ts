@@ -150,6 +150,8 @@ describe('CreateOrderUseCase', () => {
       transitionStatus: jest.fn(),
       confirmPayment: jest.fn(),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     gateway = {
       initiatePush: jest.fn(),
@@ -647,6 +649,8 @@ describe('CreateOrderUseCase', () => {
     expect(order.payment?.payerPhone).toBeNull();
     expect(order.payment?.amount).toBe(order.total);
     expect(order.orderDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // §037.A — nacer = entrar al estado: siembra la cola del kanban.
+    expect(order.statusChangedAt).toBeInstanceOf(Date);
     expect(orders.createAggregate).toHaveBeenCalledWith(order);
   });
 

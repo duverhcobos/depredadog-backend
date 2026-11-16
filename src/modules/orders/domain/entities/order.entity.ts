@@ -1,7 +1,9 @@
+import { Address } from '../../../auth/domain/entities/address.entity';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { OrderChannel } from '../enums/order-channel.enum';
 import { OrderServiceType } from '../enums/order-service-type.enum';
 import { OrderStatus } from '../enums/order-status.enum';
+import { DayClose } from './day-close.entity';
 import { OrderItem } from './order-item.entity';
 
 export class Order {
@@ -18,6 +20,11 @@ export class Order {
   addressId: string | null = null;
   deliveryAddress: string | null = null;
   status: OrderStatus = OrderStatus.PENDING;
+  /** Cierre de caja que archivó la orden — NULL = aún visible en Cocina. */
+  dayCloseId: string | null = null;
+  /** Cuándo entró al estado actual — cada carril del kanban ordena
+   * por esto (nacer = entrar: create-order lo siembra = created_at). */
+  statusChangedAt!: Date;
   subtotal!: number;
   deliveryFee = 0;
   discount = 0;
@@ -34,6 +41,10 @@ export class Order {
   items: OrderItem[] = [];
   /** Cargado por el repositorio cuando el use-case lo pide. */
   payment: Payment | null = null;
+  /** Dirección del domicilio — join de la vista admin (§037.B). */
+  address: Address | null = null;
+  /** Cierre que la archivó — carga explícita (relación day_close_id). */
+  dayClose: DayClose | null = null;
   createdAt!: Date;
   updatedAt!: Date;
 }

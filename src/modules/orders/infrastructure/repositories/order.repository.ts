@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
+import {
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
 import { Order } from '../../domain/entities/order.entity';
@@ -17,6 +24,7 @@ const ACTIVE_STATUSES = [
   OrderStatus.PENDING,
   OrderStatus.CONFIRMED,
   OrderStatus.PREPARING,
+  OrderStatus.READY,
 ];
 const HISTORY_STATUSES = [OrderStatus.DONE, OrderStatus.CANCELLED];
 
@@ -238,7 +246,11 @@ export class OrderRepository implements IOrderRepository {
         const res = await em.update(
           Order,
           { id: order.id, status: OrderStatus.PENDING },
-          { status: order.status, cancelReason: order.cancelReason },
+          {
+            status: order.status,
+            cancelReason: order.cancelReason,
+            statusChangedAt: order.statusChangedAt,
+          },
         );
         // Si la orden ya se movió, el centinela revierte TAMBIÉN el
         // kill del payment — un `return false` acá commitearía el
@@ -278,7 +290,11 @@ export class OrderRepository implements IOrderRepository {
         const res = await em.update(
           Order,
           { id: order.id, status: OrderStatus.PENDING },
-          { status: order.status, cancelReason: order.cancelReason },
+          {
+            status: order.status,
+            cancelReason: order.cancelReason,
+            statusChangedAt: order.statusChangedAt,
+          },
         );
         // Defensivo: la orden solo pudo moverse por un flujo que
         // primero claimea el payment — y el claim es nuestro. Si aún
@@ -295,27 +311,41 @@ export class OrderRepository implements IOrderRepository {
 
   // Cola del dueño — misma forma que findByCustomer sin customerId
   // (las presenciales tienen customer_id NULL y aparecen igual).
-  // La cocina atiende en orden de llegada: active por createdAt ASC;
-  // history DESC paginado igual que el listado del cliente.
+  // La cocina atiende por cola de carril: active por statusChangedAt
+  // ASC (§037.A); history DESC paginado igual que el del cliente.
   async findForAdmin(
     bucket: 'active' | 'history',
     page: number,
     limit: number,
   ): Promise<OrderListPage> {
-    const where: FindOptionsWhere<Order> = {
-      status: In(bucket === 'active' ? ACTIVE_STATUSES : HISTORY_STATUSES),
-    };
+    // Buckets §022: el done SIN cerrar sigue en la cola de Cocina
+    // hasta el cierre de caja; history = cerrados + cancelados.
+    const where: FindOptionsWhere<Order>[] =
+      bucket === 'active'
+        ? [
+            { status: In(ACTIVE_STATUSES) },
+            { status: OrderStatus.DONE, dayCloseId: IsNull() },
+          ]
+        : [
+            { status: OrderStatus.CANCELLED },
+            { status: OrderStatus.DONE, dayCloseId: Not(IsNull()) },
+          ];
     let orders: Order[];
     let total: number;
     if (bucket === 'active') {
       orders = await this.orm.find({
         where,
-        order: { createdAt: 'ASC' },
+        relations: { address: true },
+        // §037.A — cada carril del kanban ordena por cuándo entró el
+        // pedido a su estado, no por cuándo nació (un done recién
+        // entregado no salta al tope de la cola).
+        order: { statusChangedAt: 'ASC' },
       });
       total = orders.length;
     } else {
       [orders, total] = await this.orm.findAndCount({
         where,
+        relations: { address: true },
         order: { createdAt: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
@@ -328,8 +358,12 @@ export class OrderRepository implements IOrderRepository {
 
   // Detalle admin: id solo (sin filtro de cliente — el dueño ve
   // cualquier orden) con ítems + modifiers: la comanda completa.
+  // El join de address resuelve el desglose del domicilio (§037.B).
   async findById(id: string): Promise<Order | null> {
-    const order = await this.orm.findOne({ where: { id } });
+    const order = await this.orm.findOne({
+      where: { id },
+      relations: { address: true },
+    });
     if (!order) return null;
     await this.attachItemsAndPayments([order], true);
     return order;
@@ -354,7 +388,11 @@ export class OrderRepository implements IOrderRepository {
         const res = await em.update(
           Order,
           { id: order.id, status: order.status },
-          { status: to, cancelReason: order.cancelReason },
+          {
+            status: to,
+            cancelReason: order.cancelReason,
+            statusChangedAt: order.statusChangedAt,
+          },
         );
         // Carrera perdida (otro admin/webhook movió la orden): el
         // centinela revierte también el kill del payment — sino
@@ -391,11 +429,72 @@ export class OrderRepository implements IOrderRepository {
       `SELECT table_id, MIN(order_number) AS n
        FROM orders
        WHERE service_type = 'dine_in'
-         AND status IN ('pending', 'confirmed', 'preparing')
+         AND status IN ('pending', 'confirmed', 'preparing', 'ready')
          AND table_id IS NOT NULL
        GROUP BY table_id`,
     );
     return new Map(rows.map((r) => [r.table_id, Number(r.n)]));
+  }
+
+  // Preview del cierre: terminales (done + cancelled) sin day_close_id,
+  // con su pago vivo para el desglose por método (sin lock — es solo
+  // lectura; el claim transaccional vive en claimUnclosedTerminal).
+  async findUnclosedTerminal(): Promise<Order[]> {
+    const rows = await this.orm.find({
+      where: [
+        { status: OrderStatus.DONE, dayCloseId: IsNull() },
+        { status: OrderStatus.CANCELLED, dayCloseId: IsNull() },
+      ],
+      order: { updatedAt: 'ASC' },
+    });
+    await this.attachPayments(rows);
+    return rows;
+  }
+
+  // Claim del cierre dentro de la tx del use-case: UPDATE ... RETURNING
+  // reclama atómicamente TODO terminal sin cerrar (un segundo cierre o
+  // un pedido que termina en medio no se cuela — la guarda IS NULL es
+  // la puerta). Los cancelled se estampan igual para contarlos en el
+  // resumen del periodo — su bucket ya era history por status.
+  async claimUnclosedTerminal(
+    dayCloseId: string,
+    em: EntityManager,
+  ): Promise<Order[]> {
+    const claimed = await em
+      .createQueryBuilder(Order, 'o')
+      .update()
+      .set({ dayCloseId })
+      .where("status IN ('done','cancelled') AND day_close_id IS NULL")
+      .returning('id')
+      .execute();
+    const ids = (claimed.raw as { id: string }[]).map((r) => r.id);
+    if (ids.length === 0) return [];
+    const rows = await em.getRepository(Order).find({
+      where: { id: In(ids) },
+      order: { updatedAt: 'ASC' },
+    });
+    await this.attachPayments(rows, em);
+    return rows;
+  }
+
+  // Solo el pago vivo por orden (reintentos dejan filas viejas — la
+  // última es la viva), dentro o fuera de una tx según `em`.
+  private async attachPayments(
+    orders: Order[],
+    em?: EntityManager,
+  ): Promise<void> {
+    const repo = em ? em.getRepository(Payment) : this.payments;
+    const payments = await repo.find({
+      where: { orderId: In(orders.map((o) => o.id)) },
+      order: { createdAt: 'DESC' },
+    });
+    const paymentByOrder = new Map<string, Payment>();
+    for (const p of payments) {
+      if (!paymentByOrder.has(p.orderId)) paymentByOrder.set(p.orderId, p);
+    }
+    for (const o of orders) {
+      o.payment = paymentByOrder.get(o.id) ?? null;
+    }
   }
 }
 

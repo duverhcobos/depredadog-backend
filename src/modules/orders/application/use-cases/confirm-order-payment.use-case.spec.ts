@@ -10,6 +10,8 @@ import {
   STORE_REPOSITORY,
 } from '../../../store/domain/repositories/store.repository.interface';
 import { Order } from '../../domain/entities/order.entity';
+import { OrderChannel } from '../../domain/enums/order-channel.enum';
+import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderNotFoundException } from '../../domain/exceptions/order-not-found.exception';
 import { PaymentNotConfirmableException } from '../../domain/exceptions/payment-not-confirmable.exception';
@@ -19,13 +21,19 @@ import {
 } from '../../domain/repositories/order.repository.interface';
 import { ConfirmOrderPaymentUseCase } from './confirm-order-payment.use-case';
 
-function order(payment?: Payment | null): Order {
+function order(
+  payment?: Payment | null,
+  overrides: Partial<Order> = {},
+): Order {
   const o = new Order();
   o.id = 'o1';
   o.customerId = 'u1';
   o.status = OrderStatus.CONFIRMED;
+  o.channel = OrderChannel.ONLINE;
+  o.serviceType = OrderServiceType.DELIVERY;
   o.items = [];
   o.payment = payment ?? null;
+  Object.assign(o, overrides);
   return o;
 }
 
@@ -56,6 +64,8 @@ describe('ConfirmOrderPaymentUseCase', () => {
       transitionStatus: jest.fn(),
       confirmPayment: jest.fn(() => Promise.resolve(true)),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     store = {
       getSettings: jest.fn(),
@@ -93,6 +103,83 @@ describe('ConfirmOrderPaymentUseCase', () => {
     expect(p.confirmedBy).toBe('admin1');
     expect(p.confirmedAt).toBeInstanceOf(Date);
     expect(res.order.payment?.status).toBe('paid');
+    // confirmed no avanza — solo registra el cobro.
+    expect(orders.transitionStatus).not.toHaveBeenCalled();
+    expect(res.order.status).toBe('confirmed');
+  });
+
+  it('§037.D — presencial pickup pending → cobra Y avanza a confirmed', async () => {
+    orders.findById.mockResolvedValue(
+      order(payment(PaymentStatus.PENDING), {
+        status: OrderStatus.PENDING,
+        channel: OrderChannel.PRESENCIAL,
+        serviceType: OrderServiceType.PICKUP,
+      }),
+    );
+    orders.transitionStatus.mockResolvedValue(true);
+
+    const res = await useCase.execute({ orderId: 'o1', adminId: 'admin1' });
+
+    expect(orders.confirmPayment).toHaveBeenCalledWith('o1', 'admin1');
+    expect(orders.transitionStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'o1' }),
+      OrderStatus.CONFIRMED,
+    );
+    expect(res.order.status).toBe('confirmed');
+    expect(res.order.payment?.status).toBe('paid');
+    expect(res.order.statusChangedAt).toBeInstanceOf(Date);
+  });
+
+  it('§037.D — ready → cobra Y avanza a done (mesa/domicilio cobrado al final)', async () => {
+    orders.findById.mockResolvedValue(
+      order(payment(PaymentStatus.PENDING), {
+        status: OrderStatus.READY,
+        serviceType: OrderServiceType.DINE_IN,
+        channel: OrderChannel.PRESENCIAL,
+      }),
+    );
+    orders.transitionStatus.mockResolvedValue(true);
+
+    const res = await useCase.execute({ orderId: 'o1', adminId: 'admin1' });
+
+    expect(orders.transitionStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'o1' }),
+      OrderStatus.DONE,
+    );
+    expect(res.order.status).toBe('done');
+    expect(res.order.payment?.status).toBe('paid');
+  });
+
+  it('§037.D — delivery transfer en received → solo marca paid (confirma aparte)', async () => {
+    orders.findById.mockResolvedValue(
+      order(payment(PaymentStatus.PENDING), {
+        status: OrderStatus.PENDING,
+        channel: OrderChannel.ONLINE,
+        serviceType: OrderServiceType.DELIVERY,
+      }),
+    );
+
+    const res = await useCase.execute({ orderId: 'o1', adminId: 'admin1' });
+
+    expect(orders.transitionStatus).not.toHaveBeenCalled();
+    expect(res.order.status).toBe('pending');
+    expect(res.order.payment?.status).toBe('paid');
+  });
+
+  it('§037.D — avance con carrera perdida → relee y responde el estado real', async () => {
+    const stale = order(payment(PaymentStatus.PENDING), {
+      status: OrderStatus.READY,
+    });
+    const fresh = order(payment(PaymentStatus.PAID), {
+      status: OrderStatus.DONE,
+    });
+    orders.findById.mockResolvedValueOnce(stale).mockResolvedValue(fresh);
+    orders.transitionStatus.mockResolvedValue(false);
+
+    const res = await useCase.execute({ orderId: 'o1', adminId: 'admin1' });
+
+    expect(res.order.status).toBe('done');
+    expect(orders.findById).toHaveBeenCalledTimes(2);
   });
 
   it('paid → idempotente: responde la orden sin claim', async () => {

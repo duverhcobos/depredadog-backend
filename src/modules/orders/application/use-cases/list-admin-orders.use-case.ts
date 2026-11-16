@@ -19,10 +19,11 @@ export interface ListAdminOrdersQuery {
   limit: number;
 }
 
-// Cola del local: active = pending/confirmed/preparing de CUALQUIER
-// fecha (un pending de ayer no se puede perder — el dueño lo resuelve);
-// history = done/cancelled paginado. Sin filtro de cliente: el dueño
-// ve todo (las presenciales tienen customer_id NULL y aparecen igual).
+// Cola del local: active = pending/confirmed/preparing/ready de
+// CUALQUIER fecha + done SIN cerrar (§022 — un pending de ayer no
+// se puede perder — el dueño lo resuelve); history = done cerrados
+// + cancelled paginado. Sin filtro de cliente: el dueño ve todo
+// (las presenciales tienen customer_id NULL y aparecen igual).
 @Injectable()
 export class ListAdminOrdersUseCase {
   constructor(

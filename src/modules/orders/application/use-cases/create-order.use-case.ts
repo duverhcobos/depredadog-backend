@@ -121,6 +121,8 @@ export class CreateOrderUseCase {
     // contact_phone §024 — solo delivery; pickup lo rechaza en paso 2.
     order.contactPhone = cmd.contactPhone?.trim() || null;
     order.deliveryLocationLink = cmd.deliveryLocationLink ?? null;
+    // §037.A — nacer = entrar al estado: created_at siembra la cola.
+    order.statusChangedAt = now;
     await this.fillDeliverySnapshot(cmd, order); // addressId XOR newAddress
     order.payment = await this.buildPayment(cmd, order.total);
     return this.orders.createAggregate(order);

@@ -10,6 +10,8 @@ import {
   STORE_REPOSITORY,
 } from '../../../store/domain/repositories/store.repository.interface';
 import { Order } from '../../domain/entities/order.entity';
+import { OrderChannel } from '../../domain/enums/order-channel.enum';
+import { OrderServiceType } from '../../domain/enums/order-service-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { InvalidStatusTransitionException } from '../../domain/exceptions/invalid-status-transition.exception';
 import { OrderNotFoundException } from '../../domain/exceptions/order-not-found.exception';
@@ -20,11 +22,17 @@ import {
 } from '../../domain/repositories/order.repository.interface';
 import { UpdateOrderStatusUseCase } from './update-order-status.use-case';
 
-function order(status: OrderStatus, payment?: PaymentStatus): Order {
+function order(
+  status: OrderStatus,
+  payment?: PaymentStatus,
+  overrides: Partial<Order> = {},
+): Order {
   const o = new Order();
   o.id = 'o1';
   o.customerId = 'u1';
   o.status = status;
+  o.channel = OrderChannel.ONLINE;
+  o.serviceType = OrderServiceType.DELIVERY;
   o.items = [];
   if (payment) {
     const p = new Payment();
@@ -32,6 +40,7 @@ function order(status: OrderStatus, payment?: PaymentStatus): Order {
     p.status = payment;
     o.payment = p;
   }
+  Object.assign(o, overrides);
   return o;
 }
 
@@ -55,6 +64,8 @@ describe('UpdateOrderStatusUseCase', () => {
       transitionStatus: jest.fn(() => Promise.resolve(true)),
       confirmPayment: jest.fn(),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     store = {
       getSettings: jest.fn(),
@@ -106,15 +117,45 @@ describe('UpdateOrderStatusUseCase', () => {
     expect(res.customerName).toBe('Test User');
   });
 
-  it('confirmed → done con payment paid', async () => {
+  it('la cadena del kanban: confirmed→preparing→ready→done (paid)', async () => {
+    const steps: [OrderStatus, OrderStatus][] = [
+      [OrderStatus.CONFIRMED, OrderStatus.PREPARING],
+      [OrderStatus.PREPARING, OrderStatus.READY],
+      [OrderStatus.READY, OrderStatus.DONE],
+    ];
+    for (const [from, to] of steps) {
+      orders.findById.mockResolvedValue(order(from, PaymentStatus.PAID));
+      const res = await useCase.execute({ orderId: 'o1', to });
+      expect(res.order.status).toBe(to);
+    }
+  });
+
+  it('ready → done con payment paid', async () => {
     orders.findById.mockResolvedValue(
-      order(OrderStatus.CONFIRMED, PaymentStatus.PAID),
+      order(OrderStatus.READY, PaymentStatus.PAID),
     );
     const res = await useCase.execute({
       orderId: 'o1',
       to: OrderStatus.DONE,
     });
     expect(res.order.status).toBe('done');
+  });
+
+  it('cada transición estampa statusChangedAt antes del claim (§037.A)', async () => {
+    const before = Date.now();
+    orders.findById.mockResolvedValue(order(OrderStatus.PENDING));
+    let stampAlClaim: Date | undefined;
+    orders.transitionStatus.mockImplementation((o) => {
+      stampAlClaim = o.statusChangedAt;
+      return Promise.resolve(true);
+    });
+    const res = await useCase.execute({
+      orderId: 'o1',
+      to: OrderStatus.CONFIRMED,
+    });
+    expect(stampAlClaim).toBeInstanceOf(Date);
+    expect(stampAlClaim!.getTime()).toBeGreaterThanOrEqual(before);
+    expect(res.order.statusChangedAt).toBe(stampAlClaim);
   });
 
   it('pending → cancelled con reason y payment pendiente → failed', async () => {
@@ -147,13 +188,18 @@ describe('UpdateOrderStatusUseCase', () => {
 
   it.each<[OrderStatus, OrderStatus]>([
     [OrderStatus.PENDING, OrderStatus.DONE], // salto prohibido
-    [OrderStatus.PENDING, OrderStatus.PREPARING], // fuera de contrato
+    [OrderStatus.PENDING, OrderStatus.PREPARING], // salto prohibido
+    [OrderStatus.PENDING, OrderStatus.READY], // salto prohibido
     [OrderStatus.CONFIRMED, OrderStatus.CONFIRMED],
     [OrderStatus.CONFIRMED, OrderStatus.PENDING], // no retrocede
-    [OrderStatus.CONFIRMED, OrderStatus.PREPARING],
+    [OrderStatus.CONFIRMED, OrderStatus.READY], // salto prohibido
+    [OrderStatus.CONFIRMED, OrderStatus.DONE], // §022 — era válido, ahora salta
+    [OrderStatus.PREPARING, OrderStatus.DONE], // §022 — salta ready
+    [OrderStatus.PREPARING, OrderStatus.CONFIRMED], // no retrocede
+    [OrderStatus.READY, OrderStatus.PREPARING], // no retrocede
+    [OrderStatus.READY, OrderStatus.CONFIRMED], // no retrocede
     [OrderStatus.DONE, OrderStatus.CANCELLED], // terminal
     [OrderStatus.CANCELLED, OrderStatus.CONFIRMED], // terminal
-    [OrderStatus.PREPARING, OrderStatus.CONFIRMED], // enum reservado
   ])(
     '%s → %s → InvalidStatusTransitionException sin write',
     async (from, to) => {
@@ -165,9 +211,9 @@ describe('UpdateOrderStatusUseCase', () => {
     },
   );
 
-  it('done con payment pending → PaymentNotSettledException (409)', async () => {
+  it('ready → done con payment pending → PaymentNotSettledException (409)', async () => {
     orders.findById.mockResolvedValue(
-      order(OrderStatus.CONFIRMED, PaymentStatus.PENDING),
+      order(OrderStatus.READY, PaymentStatus.PENDING),
     );
     await expect(
       useCase.execute({ orderId: 'o1', to: OrderStatus.DONE }),
@@ -175,11 +221,51 @@ describe('UpdateOrderStatusUseCase', () => {
     expect(orders.transitionStatus).not.toHaveBeenCalled();
   });
 
-  it('done sin payment (agregado raro) → PaymentNotSettledException', async () => {
-    orders.findById.mockResolvedValue(order(OrderStatus.CONFIRMED));
+  it('ready → done sin payment (agregado raro) → PaymentNotSettledException', async () => {
+    orders.findById.mockResolvedValue(order(OrderStatus.READY));
     await expect(
       useCase.execute({ orderId: 'o1', to: OrderStatus.DONE }),
     ).rejects.toBeInstanceOf(PaymentNotSettledException);
+  });
+
+  it('presencial pickup sin cobrar no confirma → PaymentNotSettledException (§037.D)', async () => {
+    orders.findById.mockResolvedValue(
+      order(OrderStatus.PENDING, PaymentStatus.PENDING, {
+        channel: OrderChannel.PRESENCIAL,
+        serviceType: OrderServiceType.PICKUP,
+      }),
+    );
+    await expect(
+      useCase.execute({ orderId: 'o1', to: OrderStatus.CONFIRMED }),
+    ).rejects.toBeInstanceOf(PaymentNotSettledException);
+    expect(orders.transitionStatus).not.toHaveBeenCalled();
+  });
+
+  it('presencial pickup ya pago → confirmed libre (la puerta solo exige el cobro)', async () => {
+    orders.findById.mockResolvedValue(
+      order(OrderStatus.PENDING, PaymentStatus.PAID, {
+        channel: OrderChannel.PRESENCIAL,
+        serviceType: OrderServiceType.PICKUP,
+      }),
+    );
+    const res = await useCase.execute({
+      orderId: 'o1',
+      to: OrderStatus.CONFIRMED,
+    });
+    expect(res.order.status).toBe('confirmed');
+  });
+
+  it('online pickup sin cobrar sí confirma — la puerta es solo presencial', async () => {
+    orders.findById.mockResolvedValue(
+      order(OrderStatus.PENDING, PaymentStatus.PENDING, {
+        serviceType: OrderServiceType.PICKUP,
+      }),
+    );
+    const res = await useCase.execute({
+      orderId: 'o1',
+      to: OrderStatus.CONFIRMED,
+    });
+    expect(res.order.status).toBe('confirmed');
   });
 
   it('inexistente → OrderNotFoundException (404)', async () => {

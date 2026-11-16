@@ -53,6 +53,8 @@ describe('ListAdminOrdersUseCase', () => {
       transitionStatus: jest.fn(),
       confirmPayment: jest.fn(),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     store = {
       getSettings: jest.fn(),

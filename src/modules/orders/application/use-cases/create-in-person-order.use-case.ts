@@ -38,8 +38,12 @@ export interface CreateInPersonOrderCommand {
   notes?: string;
 }
 
-// El dueño toma el pedido en el local — nace CONFIRMED (no hay
-// "esperando confirmación del local": el local lo creó). No evalúa
+// El dueño toma el pedido en el local — dine_in nace CONFIRMED (no
+// hay "esperando confirmación del local": el local lo creó) pero la
+// RECOGIDA presencial nace en pending SIEMPRE — aunque esté paga —
+// porque el cliente tarda un momento en pagar en el mostrador y la
+// bandeja es el aviso (decisión del dueño §036/§037.D: el cobro era
+// la puerta — confirm-payment la saca de la bandeja). No evalúa
 // isOpenNow ni mínimo de delivery (reglas del canal online).
 @Injectable()
 export class CreateInPersonOrderUseCase {
@@ -70,8 +74,13 @@ export class CreateInPersonOrderUseCase {
     order.tableId = table?.id ?? null;
     order.channel = OrderChannel.PRESENCIAL;
     order.serviceType = cmd.serviceType as OrderServiceType;
-    order.status = OrderStatus.CONFIRMED;
+    order.status =
+      cmd.serviceType === 'pickup'
+        ? OrderStatus.PENDING
+        : OrderStatus.CONFIRMED;
     order.orderDate = this.businessDate(new Date(), tz);
+    // §037.A — nacer = entrar al estado.
+    order.statusChangedAt = new Date();
     order.subtotal = subtotal;
     order.deliveryFee = 0;
     order.total = subtotal;

@@ -23,6 +23,7 @@ describe('OrderRepository', () => {
     o.customerId = 'u1';
     o.orderDate = '2026-11-07';
     o.total = 16000;
+    o.statusChangedAt = new Date('2026-11-07T20:00:00Z');
     const item = new OrderItem();
     item.productId = 'p1';
     item.modifiers = [new OrderItemModifier()];
@@ -314,7 +315,11 @@ describe('OrderRepository', () => {
       2,
       Order,
       { id: 'o1', status: OrderStatus.PENDING },
-      { status: OrderStatus.CANCELLED, cancelReason: 'Me equivoqué' },
+      {
+        status: OrderStatus.CANCELLED,
+        cancelReason: 'Me equivoqué',
+        statusChangedAt: order.statusChangedAt,
+      },
     );
   });
 
@@ -355,7 +360,11 @@ describe('OrderRepository', () => {
       2,
       Order,
       { id: 'o1', status: OrderStatus.PENDING },
-      { status: OrderStatus.CONFIRMED, cancelReason: null },
+      {
+        status: OrderStatus.CONFIRMED,
+        cancelReason: null,
+        statusChangedAt: order.statusChangedAt,
+      },
     );
   });
 
@@ -405,7 +414,7 @@ describe('OrderRepository', () => {
     ).resolves.toBeNull();
   });
 
-  it('findForAdmin active: sin filtro de cliente, createdAt ASC (cola FIFO)', async () => {
+  it('findForAdmin active: OR en-curso + done sin cerrar, orden por statusChangedAt (§037.A)', async () => {
     const o = new Order();
     o.id = 'o1';
     orm.find.mockResolvedValue([o]);
@@ -415,11 +424,16 @@ describe('OrderRepository', () => {
     const page = await repo.findForAdmin('active', 1, 20);
 
     const call = orm.find.mock.calls[0][0] as {
-      where: { customerId?: string };
-      order: { createdAt: string };
+      where: { status?: unknown; dayCloseId?: unknown }[];
+      order: { statusChangedAt: string };
+      relations: { address: boolean };
     };
-    expect(call.where.customerId).toBeUndefined();
-    expect(call.order.createdAt).toBe('ASC');
+    // OR: en-curso (pending..ready) O done con day_close_id NULL — el
+    // entregado sigue en Cocina hasta el cierre de caja (§022).
+    expect(Array.isArray(call.where)).toBe(true);
+    expect(call.where).toHaveLength(2);
+    expect(call.order.statusChangedAt).toBe('ASC');
+    expect(call.relations.address).toBe(true);
     expect(orm.findAndCount).not.toHaveBeenCalled();
     expect(page.total).toBe(1);
     expect(page.items[0].items).toEqual([]);
@@ -455,7 +469,10 @@ describe('OrderRepository', () => {
 
     const found = await repo.findById('o1');
 
-    expect(orm.findOne).toHaveBeenCalledWith({ where: { id: 'o1' } });
+    expect(orm.findOne).toHaveBeenCalledWith({
+      where: { id: 'o1' },
+      relations: { address: true },
+    });
     expect(found?.items[0].modifiers).toEqual([mod]);
     expect(found?.payment).toBe(payment);
   });
@@ -488,7 +505,11 @@ describe('OrderRepository', () => {
       2,
       Order,
       { id: 'o1', status: OrderStatus.PENDING },
-      { status: OrderStatus.CANCELLED, cancelReason: 'Cerramos temprano' },
+      {
+        status: OrderStatus.CANCELLED,
+        cancelReason: 'Cerramos temprano',
+        statusChangedAt: order.statusChangedAt,
+      },
     );
   });
 
@@ -503,7 +524,11 @@ describe('OrderRepository', () => {
     expect(em.update).toHaveBeenCalledWith(
       Order,
       { id: 'o1', status: OrderStatus.PENDING },
-      { status: OrderStatus.CONFIRMED, cancelReason: null },
+      {
+        status: OrderStatus.CONFIRMED,
+        cancelReason: null,
+        statusChangedAt: order.statusChangedAt,
+      },
     );
   });
 
@@ -577,5 +602,89 @@ describe('OrderRepository', () => {
     expect(orm.query).toHaveBeenCalledWith(
       expect.stringContaining("service_type = 'dine_in'"),
     );
+    // 'ready' sigue ocupando la mesa — el índice la libera en done.
+    expect(orm.query).toHaveBeenCalledWith(expect.stringContaining("'ready'"));
+  });
+
+  it('findUnclosedTerminal: done+cancelled sin cerrar con payment', async () => {
+    const done = new Order();
+    done.id = 'o-done';
+    const cancelled = new Order();
+    cancelled.id = 'o-cancelled';
+    orm.find.mockResolvedValue([done, cancelled]);
+    const p = new Payment();
+    p.orderId = 'o-done';
+    payments.find.mockResolvedValue([p]);
+
+    const rows = await repo.findUnclosedTerminal();
+
+    expect(orm.find).toHaveBeenCalledTimes(1);
+    const call = orm.find.mock.calls[0][0] as { where: unknown[] };
+    expect(Array.isArray(call.where)).toBe(true);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].payment).toBe(p);
+    expect(rows[1].payment).toBeNull();
+  });
+
+  it('claimUnclosedTerminal: UPDATE condicional + filas reclamadas con payment', async () => {
+    const o1 = new Order();
+    o1.id = 'o1';
+    const o2 = new Order();
+    o2.id = 'o2';
+    const qb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      returning: jest.fn().mockReturnThis(),
+      execute: jest
+        .fn()
+        .mockResolvedValue({ raw: [{ id: 'o1' }, { id: 'o2' }] }),
+    };
+    const orderRepoEm = { find: jest.fn().mockResolvedValue([o1, o2]) };
+    const p = new Payment();
+    p.orderId = 'o1';
+    const paymentRepoEm = { find: jest.fn().mockResolvedValue([p]) };
+    const emClaim = {
+      createQueryBuilder: jest.fn(() => qb),
+      getRepository: jest.fn((t: unknown) =>
+        t === Payment ? paymentRepoEm : orderRepoEm,
+      ),
+    };
+
+    const rows = await repo.claimUnclosedTerminal(
+      'dc1',
+      emClaim as unknown as EntityManager,
+    );
+
+    expect(qb.update).toHaveBeenCalled();
+    expect(qb.set).toHaveBeenCalledWith({ dayCloseId: 'dc1' });
+    expect(qb.where).toHaveBeenCalledWith(
+      "status IN ('done','cancelled') AND day_close_id IS NULL",
+    );
+    expect(orderRepoEm.find).toHaveBeenCalledTimes(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].payment).toBe(p);
+  });
+
+  it('claimUnclosedTerminal sin filas reclamadas → [] sin segundas consultas', async () => {
+    const qb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      returning: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ raw: [] }),
+    };
+    const emClaim = {
+      createQueryBuilder: jest.fn(() => qb),
+      getRepository: jest.fn(),
+    };
+
+    const rows = await repo.claimUnclosedTerminal(
+      'dc1',
+      emClaim as unknown as EntityManager,
+    );
+
+    expect(rows).toEqual([]);
+    expect(emClaim.getRepository).not.toHaveBeenCalled();
   });
 });

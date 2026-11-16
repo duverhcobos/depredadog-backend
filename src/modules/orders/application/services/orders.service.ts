@@ -6,8 +6,13 @@ import {
 } from '../dtos/admin-order-response.dto';
 import { AdminTablesResponseDto } from '../dtos/admin-tables.response.dto';
 import { CancelOrderDto } from '../dtos/cancel-order.dto';
+import { CloseDayDto } from '../dtos/close-day.dto';
 import { CreateInPersonOrderDto } from '../dtos/create-in-person-order.dto';
 import { CreateOrderDto } from '../dtos/create-order.dto';
+import {
+  DayClosePreviewResponseDto,
+  DayCloseResponseDto,
+} from '../dtos/day-close.response.dto';
 import { ListAdminOrdersQueryDto } from '../dtos/list-admin-orders.query.dto';
 import { ListOrdersQueryDto } from '../dtos/list-orders.query.dto';
 import { PaymentWebhookDto } from '../dtos/payment-webhook.dto';
@@ -19,6 +24,7 @@ import { UpdateOrderStatusDto } from '../dtos/update-order-status.dto';
 import { AdminTablesMapper } from '../mappers/admin-tables.mapper';
 import { OrderMapper } from '../mappers/order.mapper';
 import { CancelMyOrderUseCase } from '../use-cases/cancel-my-order.use-case';
+import { CloseDayUseCase } from '../use-cases/close-day.use-case';
 import { ConfirmOrderPaymentUseCase } from '../use-cases/confirm-order-payment.use-case';
 import { CreateInPersonOrderUseCase } from '../use-cases/create-in-person-order.use-case';
 import { CreateOrderUseCase } from '../use-cases/create-order.use-case';
@@ -26,6 +32,7 @@ import { GetMyOrderUseCase } from '../use-cases/get-my-order.use-case';
 import { ListAdminOrdersUseCase } from '../use-cases/list-admin-orders.use-case';
 import { ListAdminTablesUseCase } from '../use-cases/list-admin-tables.use-case';
 import { ListMyOrdersUseCase } from '../use-cases/list-my-orders.use-case';
+import { PreviewDayCloseUseCase } from '../use-cases/preview-day-close.use-case';
 import { ResolveOrderPaymentUseCase } from '../use-cases/resolve-order-payment.use-case';
 import { UpdateOrderStatusUseCase } from '../use-cases/update-order-status.use-case';
 
@@ -42,6 +49,8 @@ export class OrdersService {
     private readonly confirmOrderPayment: ConfirmOrderPaymentUseCase,
     private readonly createInPersonOrder: CreateInPersonOrderUseCase,
     private readonly listAdminTables: ListAdminTablesUseCase,
+    private readonly previewDayCloseUseCase: PreviewDayCloseUseCase,
+    private readonly closeDayUseCase: CloseDayUseCase,
     private readonly mapper: OrderMapper,
     private readonly tablesMapper: AdminTablesMapper,
   ) {}
@@ -148,6 +157,24 @@ export class OrdersService {
       ...dto,
     });
     return this.mapper.toAdminResponse(result);
+  }
+
+  // El preview es solo lectura — el guard ya validó el rol; no hay
+  // nada del admin que registrar todavía (eso lo hace el cierre).
+  async previewDayClose(): Promise<DayClosePreviewResponseDto> {
+    const summary = await this.previewDayCloseUseCase.execute();
+    return this.mapper.toDayClosePreviewResponse(summary);
+  }
+
+  async closeDay(
+    adminId: string,
+    dto: CloseDayDto,
+  ): Promise<DayCloseResponseDto> {
+    const result = await this.closeDayUseCase.execute({
+      adminId,
+      note: dto.note,
+    });
+    return this.mapper.toDayCloseResponse(result);
   }
 
   async listTables(): Promise<AdminTablesResponseDto> {

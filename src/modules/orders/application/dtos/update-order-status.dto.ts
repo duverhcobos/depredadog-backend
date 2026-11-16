@@ -1,13 +1,11 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
-// DECISIÓN USUARIO: 'preparing' NO va — el dueño hace todo (cocina +
-// entrega), el intermedio no le dice nada. El flujo real es
-// pending → confirmed → done. El miembro del enum se queda (la app ya
-// lo mapea y la migración no se toca) pero ninguna transición lo
-// produce — queda inalcanzable por contrato.
+// Kanban §022: la matriz es pending→confirmed→preparing→ready→done +
+// cancelled desde cualquier no terminal. La app etiqueta 'ready' por
+// serviceType ("Va en camino"/"Servido"/"Listo p/recoger").
 export class UpdateOrderStatusDto {
-  @IsIn(['confirmed', 'done', 'cancelled'])
-  to!: 'confirmed' | 'done' | 'cancelled';
+  @IsIn(['confirmed', 'preparing', 'ready', 'done', 'cancelled'])
+  to!: 'confirmed' | 'preparing' | 'ready' | 'done' | 'cancelled';
 
   /** Solo con to='cancelled' — razón user-facing en español. */
   @IsOptional()

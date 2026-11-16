@@ -18,7 +18,7 @@
 ### Query params
 | Campo | Tipo | Default | Validación | Descripción |
 |-------|------|---------|------------|-------------|
-| `bucket` | string | `active` | `active` \| `history` | `active` = `pending`/`confirmed`/`preparing`; `history` = `done`/`cancelled` |
+| `bucket` | string | `active` | `active` \| `history` | `active` = `pending`/`confirmed`/`preparing`/`ready`; `history` = `done`/`cancelled` |
 | `page` | int | `1` | `Min(1)` | Página (solo aplica a `history`) |
 | `limit` | int | `20` | `Min(1)`, `Max(50)` | Tamaño de página (solo `history`) |
 
@@ -49,6 +49,7 @@ completos).
       "total": 16000,
       "notes": "Tocar el timbre dos veces",
       "cancelReason": null,
+      "statusChangedAt": "2026-11-07T14:18:13.390Z",
       "createdAt": "2026-11-07T14:18:13.390Z",
       "items": [
         {
@@ -103,6 +104,7 @@ real del bucket — la app dibuja el paginador con él.
       "total": 16000,
       "notes": null,
       "cancelReason": "Me equivoqué de dirección",
+      "statusChangedAt": "2026-11-07T14:24:10.012Z",
       "createdAt": "2026-11-07T14:18:13.334Z",
       "items": [
         {
@@ -154,3 +156,9 @@ fuera de rango).
   curso); `page`/`limit` se ignoran ahí aunque el envelope los reporta.
 - **`payment` puede ser `null`** en pedidos viejos sin fila de pago —
   consumir con null-check.
+- **`statusChangedAt`** (timestamptz): cuándo entró al estado actual —
+  para el cliente `done` llega directo a `history` (el cierre de caja
+  es un concepto interno de Cocina, no cambia el bucket del cliente).
+- **`ready` puede aparecer** en `status` desde el kanban §022 —
+  significa "va en camino"/"listo p/recoger"/"servido" según
+  `serviceType`; la app lo etiqueta por su propio vocabulario.

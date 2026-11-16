@@ -32,6 +32,7 @@ export class CancelMyOrderUseCase {
       throw new OrderNotCancellableException();
     }
     order.status = OrderStatus.CANCELLED;
+    order.statusChangedAt = new Date();
     order.cancelReason = cmd.reason?.trim() || null;
     // Pago pendiente → failed en la misma tx — sin huérfanos de push.
     if (order.payment?.status === PaymentStatus.PENDING) {

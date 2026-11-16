@@ -39,6 +39,7 @@
   "total": 16000,
   "notes": "Tocar el timbre dos veces",
   "cancelReason": null,
+  "statusChangedAt": "2026-11-07T14:18:13.390Z",
   "createdAt": "2026-11-07T14:18:13.390Z",
   "items": [
     {

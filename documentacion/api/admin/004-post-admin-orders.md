@@ -1,8 +1,10 @@
 # POST /admin/orders
 
 > Pedido **presencial** que toma el dueño en el local — `dine_in` con
-> mesa o `pickup` mostrador. Nace `confirmed` (el local lo crea ya
-> aceptado), sin cliente ni dirección, con la misma revalidación de
+> mesa o `pickup` mostrador. `dine_in` nace `confirmed` (el local lo
+> crea ya aceptado); `pickup` nace **`pending`** (§037.D — el cliente
+> tarda en pagar en el mostrador y la bandeja es el aviso; el cobro lo
+> confirma). Sin cliente ni dirección, con la misma revalidación de
 > catálogo y precios de BD que el canal online.
 
 | | |
@@ -64,8 +66,9 @@
 ## Responses
 
 ### 201 — Pedido presencial creado
-Nace `status='confirmed'` + `channel='presencial'`, con `tableLabel`
-resuelto y `customerName=null` (el comensal no tiene cuenta). El
+`status='confirmed'` en `dine_in` / `status='pending'` en `pickup`,
+`channel='presencial'`, con `tableLabel` resuelto y
+`customerName=null` (el comensal no tiene cuenta). El
 `orderNumber` comparte el consecutivo diario con los pedidos online.
 
 ```json
@@ -84,6 +87,7 @@ resuelto y `customerName=null` (el comensal no tiene cuenta). El
   "total": 28000,
   "notes": "Sin picante en uno",
   "cancelReason": null,
+  "statusChangedAt": "2026-11-07T14:25:01.010Z",
   "createdAt": "2026-11-07T14:25:01.010Z",
   "items": [
     {
@@ -110,7 +114,10 @@ resuelto y `customerName=null` (el comensal no tiene cuenta). El
   },
   "channel": "presencial",
   "tableLabel": "Mesa 1",
-  "customerName": null
+  "customerName": null,
+  "deliveryAddressLabel": null,
+  "deliveryLandmark": null,
+  "deliveryNeighborhood": null
 }
 ```
 
@@ -148,8 +155,12 @@ online; el local atiende en persona.
 
 ## Notas
 
-- **Nace `confirmed`** — no hay "esperando confirmación del local":
-  el dueño ya está parado en el local tomando el pedido.
+- **`dine_in` nace `confirmed`** — no hay "esperando confirmación del
+  local": el dueño ya está parado en el local tomando el pedido.
+- **`pickup` nace `pending`** (§037.D) — la bandeja es el aviso hasta
+  que el cliente pague en el mostrador; `POST .../confirm-payment`
+  cobra Y lo confirma en el mismo hecho (un `PATCH {to:'confirmed'}`
+  sin pago responde 409 `PAYMENT_NOT_SETTLED`).
 - **`deliveryFee=0` siempre** — presencial no cobra domicilio.
 - **Mesa ocupada** — un `dine_in` vivo deja la mesa con
   `activeOrderNumber` en `GET /admin/tables` hasta que el pedido

@@ -73,6 +73,8 @@ describe('CreateInPersonOrderUseCase', () => {
       transitionStatus: jest.fn(),
       confirmPayment: jest.fn(),
       findActiveTableIds: jest.fn(),
+      findUnclosedTerminal: jest.fn(),
+      claimUnclosedTerminal: jest.fn(),
     };
     gateway = {
       initiatePush: jest.fn(() =>
@@ -120,7 +122,7 @@ describe('CreateInPersonOrderUseCase', () => {
     expect(res.order.channel).toBe('presencial');
   });
 
-  it('pickup presencial → sin mesa ni lookup', async () => {
+  it('pickup presencial → sin mesa ni lookup — y nace PENDING (§036)', async () => {
     const cmd: CreateInPersonOrderCommand = { ...base, serviceType: 'pickup' };
     delete cmd.tableId;
 
@@ -129,7 +131,18 @@ describe('CreateInPersonOrderUseCase', () => {
     expect(store.getTablesByIds).not.toHaveBeenCalled();
     const saved = orders.createAggregate.mock.calls[0][0];
     expect(saved.tableId).toBeNull();
+    // La bandeja es el aviso — la recogida presencial espera el cobro
+    // aunque venga paga (confirm-payment la saca de received).
+    expect(saved.status).toBe(OrderStatus.PENDING);
     expect(res.tableLabel).toBeNull();
+  });
+
+  it('siembra statusChangedAt al nacer (§037.A — nacer = entrar)', async () => {
+    const before = Date.now();
+    await useCase.execute(base);
+    const saved = orders.createAggregate.mock.calls[0][0];
+    expect(saved.statusChangedAt).toBeInstanceOf(Date);
+    expect(saved.statusChangedAt.getTime()).toBeGreaterThanOrEqual(before);
   });
 
   it('dine_in sin tableId → InvalidOrderDataException (400)', async () => {
