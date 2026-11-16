@@ -48,6 +48,13 @@ export class AdminOrdersController {
     return this.ordersService.listAdmin(q);
   }
 
+  @Get('orders/:id')
+  getAdminOrder(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<AdminOrderResponseDto> {
+    return this.ordersService.getAdminOrder(id);
+  }
+
   @Patch('orders/:id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,

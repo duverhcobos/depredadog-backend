@@ -28,6 +28,7 @@ import { CloseDayUseCase } from '../use-cases/close-day.use-case';
 import { ConfirmOrderPaymentUseCase } from '../use-cases/confirm-order-payment.use-case';
 import { CreateInPersonOrderUseCase } from '../use-cases/create-in-person-order.use-case';
 import { CreateOrderUseCase } from '../use-cases/create-order.use-case';
+import { GetAdminOrderUseCase } from '../use-cases/get-admin-order.use-case';
 import { GetMyOrderUseCase } from '../use-cases/get-my-order.use-case';
 import { ListAdminOrdersUseCase } from '../use-cases/list-admin-orders.use-case';
 import { ListAdminTablesUseCase } from '../use-cases/list-admin-tables.use-case';
@@ -45,6 +46,7 @@ export class OrdersService {
     private readonly cancelMyOrder: CancelMyOrderUseCase,
     private readonly resolveOrderPayment: ResolveOrderPaymentUseCase,
     private readonly listAdminOrders: ListAdminOrdersUseCase,
+    private readonly getAdminOrderUseCase: GetAdminOrderUseCase,
     private readonly updateOrderStatus: UpdateOrderStatusUseCase,
     private readonly confirmOrderPayment: ConfirmOrderPaymentUseCase,
     private readonly createInPersonOrder: CreateInPersonOrderUseCase,
@@ -123,6 +125,11 @@ export class OrdersService {
       limit: q.limit,
     });
     return this.mapper.toAdminListResponse(result, q.page, q.limit);
+  }
+
+  async getAdminOrder(orderId: string): Promise<AdminOrderResponseDto> {
+    const result = await this.getAdminOrderUseCase.execute({ orderId });
+    return this.mapper.toAdminResponse(result);
   }
 
   async updateStatus(

@@ -49,6 +49,7 @@ Contrato para consumidores de la API (app Flutter y futuros integradores).
 | POST | `/orders/:id/cancel` | [004](orders/004-post-orders-id-cancel.md) | 🔶 backend listo — sin integrar |
 | POST | `/payments/webhook/:provider` | [001](payments/001-post-payments-webhook-provider.md) | 🔶 backend listo — sin integrar |
 | GET | `/admin/orders` | [001](admin/001-get-admin-orders.md) | 🔶 backend listo — sin integrar |
+| GET | `/admin/orders/:id` | [008](admin/008-get-admin-orders-id.md) | 🔶 backend listo — sin integrar |
 | PATCH | `/admin/orders/:id/status` | [002](admin/002-patch-admin-orders-id-status.md) | 🔶 backend listo — sin integrar |
 | POST | `/admin/orders/:id/confirm-payment` | [003](admin/003-post-admin-orders-id-confirm-payment.md) | 🔶 backend listo — sin integrar |
 | POST | `/admin/orders` | [004](admin/004-post-admin-orders.md) | 🔶 backend listo — sin integrar |

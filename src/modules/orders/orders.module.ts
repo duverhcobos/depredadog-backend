@@ -20,6 +20,7 @@ import { CloseDayUseCase } from './application/use-cases/close-day.use-case';
 import { ConfirmOrderPaymentUseCase } from './application/use-cases/confirm-order-payment.use-case';
 import { CreateInPersonOrderUseCase } from './application/use-cases/create-in-person-order.use-case';
 import { CreateOrderUseCase } from './application/use-cases/create-order.use-case';
+import { GetAdminOrderUseCase } from './application/use-cases/get-admin-order.use-case';
 import { GetMyOrderUseCase } from './application/use-cases/get-my-order.use-case';
 import { ListAdminOrdersUseCase } from './application/use-cases/list-admin-orders.use-case';
 import { ListAdminTablesUseCase } from './application/use-cases/list-admin-tables.use-case';
@@ -62,6 +63,7 @@ import { OrderRepository } from './infrastructure/repositories/order.repository'
     CancelMyOrderUseCase,
     ResolveOrderPaymentUseCase,
     ListAdminOrdersUseCase,
+    GetAdminOrderUseCase,
     UpdateOrderStatusUseCase,
     ConfirmOrderPaymentUseCase,
     CreateInPersonOrderUseCase,

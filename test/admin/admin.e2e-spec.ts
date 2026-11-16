@@ -5,7 +5,11 @@ import { DataSource } from 'typeorm';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcrypt';
 import { Category } from '../../src/modules/catalog/domain/entities/category.entity';
+import { ModifierGroup } from '../../src/modules/catalog/domain/entities/modifier-group.entity';
+import { ModifierOption } from '../../src/modules/catalog/domain/entities/modifier-option.entity';
 import { Product } from '../../src/modules/catalog/domain/entities/product.entity';
+import { ProductModifierGroup } from '../../src/modules/catalog/domain/entities/product-modifier-group.entity';
+import { ProductModifierOption } from '../../src/modules/catalog/domain/entities/product-modifier-option.entity';
 import { BusinessHour } from '../../src/modules/store/domain/entities/business-hour.entity';
 import { StoreSettings } from '../../src/modules/store/domain/entities/store-settings.entity';
 import { StoreTable } from '../../src/modules/store/domain/entities/store-table.entity';
@@ -39,6 +43,8 @@ describe('/admin (e2e)', () => {
 
   let product: Product;
   let mesa: StoreTable;
+  let mozzarella: ModifierOption;
+  let tocineta: ModifierOption;
 
   async function cleanCatalogTables(): Promise<void> {
     const ds = app.get(DataSource);
@@ -74,6 +80,42 @@ describe('/admin (e2e)', () => {
       name: 'El Cachorro',
       slug: 'el-cachorro',
       basePrice: 14000,
+      sortOrder: 0,
+    });
+    // Grupo enlazado al producto — la comanda del detalle admin
+    // necesita modifiers reales (el listado los manda vacíos).
+    const group = await ds.getRepository(ModifierGroup).save({
+      slug: 'ingredients',
+      name: 'Ingredientes',
+      minSelect: 0,
+      maxSelect: null,
+    });
+    // Incluida y removible — el "sin queso" que cocina tiene que ver.
+    mozzarella = await ds.getRepository(ModifierOption).save({
+      groupId: group.id,
+      name: 'Queso mozzarella',
+      extraPrice: 3500,
+      isRemovable: true,
+      isAvailable: true,
+      sortOrder: 0,
+    });
+    // Extra pago — sin fila en product_modifier_options.
+    tocineta = await ds.getRepository(ModifierOption).save({
+      groupId: group.id,
+      name: 'Tocineta',
+      extraPrice: 2000,
+      isRemovable: false,
+      isAvailable: true,
+      sortOrder: 1,
+    });
+    await ds.getRepository(ProductModifierGroup).save({
+      productId: product.id,
+      groupId: group.id,
+    });
+    await ds.getRepository(ProductModifierOption).save({
+      productId: product.id,
+      optionId: mozzarella.id,
+      includedByDefault: true,
       sortOrder: 0,
     });
   }
@@ -190,6 +232,10 @@ describe('/admin (e2e)', () => {
       .set(auth(tokens.accessToken))
       .expect(403);
     await request(server())
+      .get(`/admin/orders/${id}`)
+      .set(auth(tokens.accessToken))
+      .expect(403);
+    await request(server())
       .patch(`/admin/orders/${id}/status`)
       .set(auth(tokens.accessToken))
       .send({ to: 'confirmed' })
@@ -218,6 +264,7 @@ describe('/admin (e2e)', () => {
       .expect(403);
     // Sin JWT el guard global responde antes → 401.
     await request(server()).get('/admin/orders').expect(401);
+    await request(server()).get(`/admin/orders/${id}`).expect(401);
     await request(server()).get('/admin/day-close').expect(401);
   });
 
@@ -300,6 +347,77 @@ describe('/admin (e2e)', () => {
       .set(auth(adminTokens.accessToken))
       .expect(200);
     expect((emptyHist.body as { total: number }).total).toBe(0);
+  });
+
+  it('GET /admin/orders/:id → comanda completa: modifiers, desglose de dirección y mismos 400/404', async () => {
+    const addressId = await createAddress();
+    const created = await request(server())
+      .post('/orders')
+      .set(auth(tokens.accessToken))
+      .send({
+        serviceType: 'delivery',
+        items: [
+          {
+            productId: product.id,
+            quantity: 1,
+            modifiers: [
+              { optionId: mozzarella.id, action: 'removed' },
+              { optionId: tocineta.id, action: 'added' },
+            ],
+          },
+        ],
+        addressId,
+        contactPhone: '3009876543',
+        paymentMethod: 'cash',
+      })
+      .expect(201);
+    const orderId = (created.body as { id: string }).id;
+    // Y una orden sin modifiers — su detalle manda [] igual que el
+    // listado (la cocina distingue "sin nada" de "sin dato").
+    const plain = await postDeliveryCashOrder();
+
+    // El detalle SÍ carga la comanda — el listado manda modifiers: []
+    // a propósito (payload liviano del kanban).
+    const res = await request(server())
+      .get(`/admin/orders/${orderId}`)
+      .set(auth(adminTokens.accessToken))
+      .expect(200);
+    const body = res.body as Record<string, unknown>;
+    expect(body.id).toBe(orderId);
+    expect(body.channel).toBe('online');
+    expect(body.customerName).toBe('Test User');
+    expect(body.statusChangedAt).toBeTruthy();
+    expect(body.deliveryAddressLabel).toBe('Casa');
+    expect(body.deliveryLandmark).toBe('Casa blanca frente a la cancha');
+    expect(body.deliveryNeighborhood).toBe('Barrio Centro');
+    const items = body.items as Record<string, unknown>[];
+    const mods = items[0].modifiers as Record<string, unknown>[];
+    expect(mods).toHaveLength(2);
+    const removed = mods.find((m) => m.action === 'removed')!;
+    expect(removed.optionName).toBe('Queso mozzarella');
+    expect(removed.priceDelta).toBe(0);
+    const added = mods.find((m) => m.action === 'added')!;
+    expect(added.optionName).toBe('Tocineta');
+    expect(added.priceDelta).toBe(2000);
+
+    const plainRes = await request(server())
+      .get(`/admin/orders/${plain.id as string}`)
+      .set(auth(adminTokens.accessToken))
+      .expect(200);
+    const plainItems = (plainRes.body as Record<string, unknown>)
+      .items as Record<string, unknown>[];
+    expect(plainItems[0].modifiers).toEqual([]);
+
+    // Inexistente → 404 ORDER_NOT_FOUND; no-uuid → 400 del pipe.
+    const ghost = await request(server())
+      .get(`/admin/orders/${randomUUID()}`)
+      .set(auth(adminTokens.accessToken))
+      .expect(404);
+    expect(ghost.body.errorCode).toBe('ORDER_NOT_FOUND');
+    await request(server())
+      .get('/admin/orders/no-uuid')
+      .set(auth(adminTokens.accessToken))
+      .expect(400);
   });
 
   it('matriz: confirmed→done es salto inválido (409); done directo exige pago (409)', async () => {
