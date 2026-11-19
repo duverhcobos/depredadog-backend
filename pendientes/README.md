@@ -16,3 +16,7 @@
 | 008 | [Índices en junctions del catálogo](008-indices-junction-catalogo.md) | ✅ RESUELTO (propuesta 013) | recomendado |
 | 009 | [Orders: re-validar reglas del catálogo en el servidor](009-orders-revalidar-catalogo.md) | 🔴 PENDIENTE | bloqueante para orders |
 | 010 | [Onboarding Nequi Conecta (llaves QA + certificación + prod)](010-nequi-conecta-onboarding.md) | ⏸️ PENDIENTE EXTERNO | bloqueante para pagos reales |
+| 011 | [Reembolsos](011-reembolsos.md) | 🔴 PENDIENTE | recomendado |
+| 012 | [Store: support_phone en settings](012-store-support-phone.md) | 🔴 PENDIENTE | recomendado |
+| 013 | [Auth: endpoints de perfil](013-auth-perfil-endpoints.md) | 🔴 PENDIENTE | recomendado |
+| 014 | [Listado de cierres de caja (GET /admin/day-closes)](014-day-closes-listado.md) | 🔴 PENDIENTE | menor |
