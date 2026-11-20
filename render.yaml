@@ -6,7 +6,9 @@ services:
     name: depredadog-api
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    # Render corre el build con NODE_ENV=production → npm ci --include=dev
+    # fuerza devDependencies (@nestjs/cli) que npm install saltaría.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /health
     envVars:
