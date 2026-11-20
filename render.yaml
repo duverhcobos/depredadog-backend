@@ -14,15 +14,16 @@ services:
         value: production
       - key: PORT
         value: "3000"
-      # Supabase — conexión directa 5432 (MVP; pooler queda en pendientes)
-      - key: DB_HOST # db.<ref>.supabase.co — lo pega el dueño
-        sync: false
+      # Supabase — session pooler 5432 (IPv4: Render no alcanza el host
+      # directo que es solo-IPv6 en free). Migraciones/seeds corren a mano.
+      - key: DB_HOST
+        value: aws-1-us-east-1.pooler.supabase.com
       - key: DB_PORT
         value: "5432"
       - key: DB_USERNAME
-        value: postgres
+        value: postgres.dqsconhgwnsgnehfhwce
       - key: DB_PASSWORD
-        sync: false
+        sync: false # el dueño lo pega en el dashboard
       - key: DB_DATABASE
         value: postgres
       - key: DB_SSL
