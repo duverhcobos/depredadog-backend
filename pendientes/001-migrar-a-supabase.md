@@ -1,6 +1,7 @@
 # Pendiente: Migrar la base de datos a Supabase para producción
 
-> **Estado: 🔴 PENDIENTE** — Desarrollo corre sobre PostgreSQL local (`localhost:5432`); producción apunta a Supabase.
+> **Estado: 🟢 RESUELTO (2026-11-20)** — prod corre contra Supabase `depredadog` vía **session pooler** (`aws-1-us-east-1.pooler.supabase.com:5432`, `DB_SSL=true`). 13 migraciones + seeds (admin/catalog/store) aplicadas. Supabase se usa SOLO como Postgres (no Auth/Storage). Credenciales locales en `.env.supabase.local` (gitignored).
+> **Nota de decisión:** se eligió session pooler y NO conexión directa — el host directo es solo-IPv6 en free y Render no alcanza IPv4→IPv6. Transaction pooler se descartó por prepared statements de TypeORM.
 > **Producto:** backend
 > **Bloqueo:** bloqueante
 

@@ -1,6 +1,7 @@
 # Pendiente: Hosting, dominio y deploy del backend a producción
 
-> **Estado: 🔴 PENDIENTE** — el backend solo corre en local (`:3000`); no hay destino de deploy, dominio ni HTTPS decididos
+> **Estado: 🟡 PARCIAL (2026-11-20)** — `depredadog-api` LIVE en Render (**https://depredadog-api.onrender.com**, plan **Free**, Blueprint desde `render.yaml` en repo, auto-deploy por push a `main`). Verificado: `/health` → db:up, swagger off en prod, `/catalog` con datos reales, login admin OK.
+> **Lo que queda:** subir a **Starter ($7/mes)** antes de operar en serio (free duerme a los 15 min — cold start ~50s); dominio propio opcional; `RESEND_API_KEY` real (pendiente 002); migraciones corren A MANO contra Supabase (`source .env.supabase.local && npm run migration:run`) — `MIGRATIONS_RUN=false` en prod.
 > **Producto:** backend
 > **Bloqueo:** bloqueante — sin backend público no hay app en producción; también bloquea `API_BASE_URL` de prod en la app
 
