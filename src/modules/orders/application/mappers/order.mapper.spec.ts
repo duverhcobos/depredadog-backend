@@ -36,7 +36,8 @@ describe('OrderMapper', () => {
     m.optionId = 'opt1';
     m.optionName = 'Tocineta';
     m.action = ModifierAction.ADDED;
-    m.priceDelta = 2000;
+    m.priceDelta = 4000;
+    m.times = 2;
     m.modifierGroup = 'ingredients';
     m.replacesOptionId = 'opt9';
 
@@ -94,7 +95,8 @@ describe('OrderMapper', () => {
     expect(item.modifiers).toHaveLength(1);
     expect(item.modifiers[0].optionName).toBe('Tocineta');
     expect(item.modifiers[0].action).toBe('added');
-    expect(item.modifiers[0].priceDelta).toBe(2000);
+    expect(item.modifiers[0].priceDelta).toBe(4000);
+    expect(item.modifiers[0].times).toBe(2);
     expect(item.modifiers[0].modifierGroup).toBe('ingredients');
     expect(item.modifiers[0].replacesOptionId).toBe('opt9');
 

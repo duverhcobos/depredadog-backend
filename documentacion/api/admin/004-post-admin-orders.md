@@ -27,7 +27,7 @@
 | `items[].productId` | uuid | sí | — | Producto de la carta |
 | `items[].quantity` | int | sí | `Min(1)`, `Max(20)` | Cantidad |
 | `items[].notes` | string | no | `MaxLength(200)` | Nota del ítem |
-| `items[].modifiers` | array | sí (default `[]`) | — | `optionId` + `added`\|`removed` (+`replacesOptionId`) |
+| `items[].modifiers` | array | sí (default `[]`) | — | `optionId` + `added`\|`removed` (+`times` §026, +`replacesOptionId`) |
 | `paymentMethod` | string | sí | `cash` \| `transfer` | `cash` queda `pending` al cobro manual |
 | `payerPhone` | string | `transfer` | `/^3\d{9}$/` | Celular que recibe el push — prohibido en `cash` |
 | `notes` | string | no | `MaxLength(500)` | Nota del pedido |

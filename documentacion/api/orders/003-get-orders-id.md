@@ -59,6 +59,7 @@
           "optionName": "Queso mozzarella",
           "action": "removed",
           "priceDelta": 0,
+          "times": 1,
           "modifierGroup": "ingredients",
           "replacesOptionId": null
         }

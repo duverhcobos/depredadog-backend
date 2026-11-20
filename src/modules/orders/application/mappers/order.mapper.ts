@@ -143,6 +143,7 @@ export class OrderMapper {
     dto.optionName = m.optionName;
     dto.action = m.action;
     dto.priceDelta = m.priceDelta;
+    dto.times = m.times;
     dto.modifierGroup = m.modifierGroup;
     dto.replacesOptionId = m.replacesOptionId;
     return dto;

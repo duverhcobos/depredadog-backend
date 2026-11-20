@@ -252,6 +252,7 @@ describe('/orders (e2e)', () => {
     expect(mods[0].optionName).toBe('Tocineta');
     expect(mods[0].action).toBe('added');
     expect(mods[0].priceDelta).toBe(2000);
+    expect(mods[0].times).toBe(1);
     expect(mods[0].modifierGroup).toBe('ingredients');
     expect(mods[0].replacesOptionId).toBeNull();
     const payment = body.payment as Record<string, unknown>;
@@ -259,6 +260,44 @@ describe('/orders (e2e)', () => {
     expect(payment.status).toBe('pending');
     expect(payment.amount).toBe(16000);
     expect(payment.payerPhone).toBe('3001234567');
+  });
+
+  it('POST added times:2 → priceDelta = extra×2; GET :id repite el snapshot (§026)', async () => {
+    const body = await postOrder({
+      serviceType: 'pickup',
+      items: [
+        {
+          productId: product.id,
+          quantity: 1,
+          modifiers: [{ optionId: tocineta.id, action: 'added', times: 2 }],
+        },
+      ],
+      paymentMethod: 'transfer',
+      payerPhone: '3001234567',
+    });
+
+    // 14000 base + 2000 extra × 2 porciones.
+    expect(body.subtotal).toBe(18000);
+    expect(body.total).toBe(18000);
+    const items = body.items as Record<string, unknown>[];
+    expect(items[0].unitPrice).toBe(18000);
+    const mods = items[0].modifiers as Record<string, unknown>[];
+    expect(mods[0].times).toBe(2);
+    expect(mods[0].priceDelta).toBe(4000);
+
+    // Round-trip: la columna times persiste y vuelve en el detalle.
+    const res = await request(server())
+      .get(`/orders/${body.id as string}`)
+      .set(auth(tokens.accessToken))
+      .expect(200);
+    const detailMods = (
+      (res.body as Record<string, unknown>).items as Record<
+        string,
+        unknown
+      >[]
+    )[0].modifiers as Record<string, unknown>[];
+    expect(detailMods[0].times).toBe(2);
+    expect(detailMods[0].priceDelta).toBe(4000);
   });
 
   it('POST delivery + addressId + contactPhone + cash → 201 con snapshot y fee', async () => {
@@ -361,6 +400,27 @@ describe('/orders (e2e)', () => {
       tokens.accessToken,
       400,
     );
+  });
+
+  it('POST times inválido (0 / negativo / decimal) → 400 del ValidationPipe (§026)', async () => {
+    for (const times of [0, -1, 1.5]) {
+      await postOrder(
+        {
+          serviceType: 'pickup',
+          items: [
+            {
+              productId: product.id,
+              quantity: 1,
+              modifiers: [{ optionId: tocineta.id, action: 'added', times }],
+            },
+          ],
+          paymentMethod: 'transfer',
+          payerPhone: '3001234567',
+        },
+        tokens.accessToken,
+        400,
+      );
+    }
   });
 
   it('POST violaciones de catálogo → 409', async () => {

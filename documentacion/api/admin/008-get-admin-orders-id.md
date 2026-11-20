@@ -66,6 +66,7 @@ dirección §037.B incluidos) pero con `items[].modifiers` poblado.
           "optionName": "Queso mozzarella",
           "action": "removed",
           "priceDelta": 0,
+          "times": 1,
           "modifierGroup": "ingredients",
           "replacesOptionId": null
         },
@@ -75,6 +76,7 @@ dirección §037.B incluidos) pero con `items[].modifiers` poblado.
           "optionName": "Tocineta",
           "action": "added",
           "priceDelta": 2000,
+          "times": 1,
           "modifierGroup": "ingredients",
           "replacesOptionId": null
         }
@@ -123,8 +125,11 @@ dirección §037.B incluidos) pero con `items[].modifiers` poblado.
   kanban; este endpoint es el que trae la comanda completa.
 - **`modifiers` acciones**: `added` con `priceDelta` cobrado (o 0 si
   fue reemplazo gratis — `replacesOptionId` apunta a la opción
-  financiadora) y `removed` con delta 0. `modifierGroup` es el slug
-  del grupo ("ingredients") para seccionar la personalización.
+  financiadora) y `removed` con delta 0. `times` (§026) son las
+  porciones del adicional — `priceDelta` ya es el total de línea
+  (`extra × times`), la comanda pinta "Tocineta ×2" con él.
+  `modifierGroup` es el slug del grupo ("ingredients") para seccionar
+  la personalización.
 - **Desglose de dirección** (`deliveryAddressLabel` /
   `deliveryLandmark` / `deliveryNeighborhood`) resuelve igual que en
   el listado (§037.B): `null` en `pickup`/`dine_in` y pedidos sin

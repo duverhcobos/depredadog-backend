@@ -13,6 +13,7 @@ import { OrderCatalogViolationException } from '../exceptions/order-catalog-viol
 export interface OrderItemModifierInput {
   optionId: string;
   action: 'added' | 'removed';
+  times?: number;
   replacesOptionId?: string;
 }
 
@@ -97,28 +98,46 @@ export class OrderItemsBuilder {
             `option ${m.optionId} not for product`,
           );
         }
+        const times = m.times ?? 1;
+        // El builder es la frontera "no se confía en el cliente" (§026,
+        // hallazgo de auditoría): times debe ser entero ≥ 1 — el DTO lo
+        // valida hoy, pero un caller futuro (seed/job/test) podría
+        // bypasearlo e inyectar extras gratis o descuentos negativos.
+        if (!Number.isInteger(times) || times < 1) {
+          throw new OrderCatalogViolationException(
+            `option ${entry.opt.name} invalid times`,
+          );
+        }
         if (m.action === 'removed') {
           if (!entry.includedByDefault || !entry.opt.isRemovable) {
             throw new OrderCatalogViolationException(
               `option ${entry.opt.name} cannot be removed`,
             );
           }
+          if (times !== 1) {
+            throw new OrderCatalogViolationException(
+              `option ${entry.opt.name} removed must be times=1`,
+            );
+          }
           mods.push(this.modifier(entry, 'removed', 0));
           continue;
         }
-        // added — ¿extra cobrado o reemplazo gratis (§021)?
+        // added — ¿extra cobrado o reemplazo gratis (§021)? La porción
+        // repetida (§026) multiplica el delta; el cambio gratis sigue
+        // siendo 1:1.
         if (!entry.opt.isAvailable) {
           throw new OrderCatalogViolationException(
             `option ${entry.opt.name} unavailable`,
           );
         }
-        let delta = entry.opt.extraPrice;
+        let delta = entry.opt.extraPrice * times;
         if (m.replacesOptionId) {
           const replaced = options.get(m.replacesOptionId);
           const hasRemovedRow = dto.modifiers.some(
             (x) => x.optionId === m.replacesOptionId && x.action === 'removed',
           );
           const ok =
+            times === 1 &&
             replaced?.includedByDefault &&
             replaced.opt.isReplaceable &&
             entry.opt.isReplacementEligible &&
@@ -132,7 +151,9 @@ export class OrderItemsBuilder {
           consumedReplacements.add(m.replacesOptionId);
           delta = 0;
         }
-        mods.push(this.modifier(entry, 'added', delta, m.replacesOptionId));
+        mods.push(
+          this.modifier(entry, 'added', delta, m.replacesOptionId, times),
+        );
       }
       const unit =
         product.basePrice +
@@ -196,12 +217,14 @@ export class OrderItemsBuilder {
     action: 'added' | 'removed',
     delta: number,
     replacesOptionId?: string,
+    times = 1,
   ): OrderItemModifier {
     const m = new OrderItemModifier();
     m.optionId = entry.opt.id;
     m.optionName = entry.opt.name;
     m.action = action as ModifierAction;
     m.priceDelta = delta;
+    m.times = times;
     m.modifierGroup = entry.groupSlug;
     m.replacesOptionId = replacesOptionId ?? null;
     return m;

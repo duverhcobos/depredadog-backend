@@ -26,6 +26,14 @@ export class OrderItemModifierDto {
   @IsIn(['added', 'removed'])
   action!: 'added' | 'removed';
 
+  /** Porciones del adicional (§026) — solo válido en `added`:
+   * entero ≥ 1, SIN tope (decisión del usuario). Ausente = 1.
+   * Removed/reemplazo deben venir en 1. */
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  times?: number;
+
   /** Solo en `added` de un reemplazo gratis (§021): apunta al
    * ingrediente incluido agotado que esta opción reemplaza. */
   @IsUUID()

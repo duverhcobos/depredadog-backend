@@ -4,6 +4,9 @@ export class OrderItemModifierResponseDto {
   optionName!: string;
   action!: string;
   priceDelta!: number;
+  /** Porciones del adicional (§026) — `priceDelta` ya es el total de
+   * línea (extra × times); la app pinta "Mozzarella ×3" con esto. */
+  times!: number;
   modifierGroup!: string | null;
   replacesOptionId!: string | null;
 }

@@ -8,6 +8,10 @@ export class OrderItemModifier {
   optionName!: string;
   action!: ModifierAction;
   priceDelta = 0;
+  /** Porciones del adicional (§026): solo aplica a filas `added` —
+   *  `priceDelta` ya es el total de línea (extra × times). Removed y
+   *  reemplazos gratis siempre son 1. */
+  times = 1;
   /** Snapshot del slug del grupo origen (§016) — la app secciona el
    *  detalle con él; null en filas previas a §016. */
   modifierGroup: string | null = null;

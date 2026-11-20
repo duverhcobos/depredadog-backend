@@ -618,6 +618,128 @@ describe('CreateOrderUseCase', () => {
     );
   });
 
+  it('added con times:3 → priceDelta = extraPrice × 3 y el unit lo suma (§026)', async () => {
+    const extra = option('o-extra', { name: 'Mozzarella', extraPrice: 2000 });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1'), [extra]),
+    ]);
+    const order = await useCase.execute({
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [{ optionId: 'o-extra', action: 'added', times: 3 }],
+        },
+      ],
+    });
+    const added = order.items[0].modifiers[0];
+    expect(added.times).toBe(3);
+    expect(added.priceDelta).toBe(6000);
+    expect(order.items[0].unitPrice).toBe(14000 + 6000);
+    expect(order.subtotal).toBe(20000);
+  });
+
+  it('added sin times → default 1, delta = extra (backward-compatible)', async () => {
+    const extra = option('o-extra', { extraPrice: 2000 });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1'), [extra]),
+    ]);
+    const order = await useCase.execute({
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [{ optionId: 'o-extra', action: 'added' }],
+        },
+      ],
+    });
+    const added = order.items[0].modifiers[0];
+    expect(added.times).toBe(1);
+    expect(added.priceDelta).toBe(2000);
+    expect(order.items[0].unitPrice).toBe(16000);
+  });
+
+  it('removed con times:2 → 409 (no se puede quitar N de un incluido)', async () => {
+    const queso = option('o-queso', {
+      includedByDefault: true,
+      isRemovable: true,
+    });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1'), [queso]),
+    ]);
+    const cmd: CreateOrderCommand = {
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [{ optionId: 'o-queso', action: 'removed', times: 2 }],
+        },
+      ],
+    };
+    await expect(useCase.execute(cmd)).rejects.toBeInstanceOf(
+      OrderCatalogViolationException,
+    );
+  });
+
+  it('added con times:0 bypass DTO → 409 del builder (invariante §026)', async () => {
+    const extra = option('o-extra', { extraPrice: 2000 });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1'), [extra]),
+    ]);
+    const cmd: CreateOrderCommand = {
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [{ optionId: 'o-extra', action: 'added', times: 0 }],
+        },
+      ],
+    };
+    await expect(useCase.execute(cmd)).rejects.toBeInstanceOf(
+      OrderCatalogViolationException,
+    );
+  });
+
+  it('reemplazo gratis con times:2 → 409 (el cambio es 1:1)', async () => {
+    const queso = option('o-queso', {
+      includedByDefault: true,
+      isReplaceable: true,
+      isAvailable: false,
+    });
+    const top = option('o-top', {
+      extraPrice: 2000,
+      isReplacementEligible: true,
+    });
+    catalog.getOrderableProducts.mockResolvedValue([
+      withGroup(product('p1'), [queso, top]),
+    ]);
+    const cmd: CreateOrderCommand = {
+      ...base,
+      items: [
+        {
+          productId: 'p1',
+          quantity: 1,
+          modifiers: [
+            { optionId: 'o-queso', action: 'removed' },
+            {
+              optionId: 'o-top',
+              action: 'added',
+              times: 2,
+              replacesOptionId: 'o-queso',
+            },
+          ],
+        },
+      ],
+    };
+    await expect(useCase.execute(cmd)).rejects.toBeInstanceOf(
+      OrderCatalogViolationException,
+    );
+  });
+
   it('calcula subtotal + deliveryFee + total y persiste el agregado', async () => {
     const extra = option('o-extra', { extraPrice: 2000 });
     catalog.getOrderableProducts.mockResolvedValue([

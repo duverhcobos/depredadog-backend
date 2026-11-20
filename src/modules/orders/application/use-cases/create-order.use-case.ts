@@ -33,6 +33,7 @@ import { OrderItemsBuilder } from '../../domain/services/order-items-builder.ser
 export interface CreateOrderItemModifierCommand {
   optionId: string;
   action: 'added' | 'removed';
+  times?: number;
   replacesOptionId?: string;
 }
 

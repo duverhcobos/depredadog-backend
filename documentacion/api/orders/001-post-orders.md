@@ -27,6 +27,7 @@
 | `items[].modifiers` | array | sí (default `[]`) | — | Modificadores elegidos (ver abajo) |
 | `items[].modifiers[].optionId` | uuid | sí | — | Opción de la carta |
 | `items[].modifiers[].action` | string | sí | `added` \| `removed` | `added` extra / `removed` "sin X" |
+| `items[].modifiers[].times` | int | no | `Min(1)`, sin tope | Porciones del adicional (§026) — solo `added`; ausente = 1. `removed`/reemplazo deben ser 1 |
 | `items[].modifiers[].replacesOptionId` | uuid | no | — | Solo en `added` de reemplazo gratis: apunta al ingrediente incluido que reemplaza |
 | `addressId` | uuid | delivery* | — | Dirección guardada propia. **XOR** con `newAddress` |
 | `newAddress` | object | delivery* | — | `{ landmark, neighborhood? }` — dirección sin guardar. **XOR** con `addressId` |
@@ -46,7 +47,7 @@
       "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
       "quantity": 1,
       "modifiers": [
-        { "optionId": "03ad6f96-8e46-4b3b-a931-bd91b0079cc7", "action": "added" }
+        { "optionId": "03ad6f96-8e46-4b3b-a931-bd91b0079cc7", "action": "added", "times": 2 }
       ]
     }
   ],
@@ -89,10 +90,10 @@
   "contactPhone": null,
   "deliveryAddress": null,
   "deliveryLocationLink": null,
-  "subtotal": 16000,
+  "subtotal": 18000,
   "deliveryFee": 0,
   "discount": 0,
-  "total": 16000,
+  "total": 18000,
   "notes": null,
   "cancelReason": null,
   "statusChangedAt": "2026-11-07T14:18:13.334Z",
@@ -103,9 +104,9 @@
       "productId": "212eec68-c171-45e8-84bc-2dd1099a43f8",
       "productName": "El Cachorro",
       "productSlug": "el-cachorro",
-      "unitPrice": 16000,
+      "unitPrice": 18000,
       "quantity": 1,
-      "lineTotal": 16000,
+      "lineTotal": 18000,
       "notes": null,
       "includedNames": ["Pan artesanal", "Salchicha americana", "Queso mozzarella"],
       "modifiers": [
@@ -114,7 +115,8 @@
           "optionId": "03ad6f96-8e46-4b3b-a931-bd91b0079cc7",
           "optionName": "Tocineta",
           "action": "added",
-          "priceDelta": 2000,
+          "priceDelta": 4000,
+          "times": 2,
           "modifierGroup": "ingredients",
           "replacesOptionId": null
         }
@@ -125,7 +127,7 @@
     "id": "097fa1b4-0dda-40a3-8522-365719e9c54e",
     "method": "transfer",
     "status": "pending",
-    "amount": 16000,
+    "amount": 18000,
     "payerPhone": "3001234567",
     "provider": "sim",
     "providerReference": "sim-9f1c2e3a-7b4d-4e2f-9a1b-2c3d4e5f6a7b"
@@ -170,6 +172,7 @@
           "optionName": "Queso mozzarella",
           "action": "removed",
           "priceDelta": 0,
+          "times": 1,
           "modifierGroup": "ingredients",
           "replacesOptionId": null
         }
@@ -247,6 +250,12 @@ reintentar con el mismo `clientRequestId` sin dejar pedidos huérfanos.
   `priceDelta: 0` cuando el ingrediente reemplazado era incluido +
   reemplazable, el nuevo es elegible como reemplazo y el payload trae
   su `removed` en el mismo ítem.
+- **Porciones extra** (`times`, §026): un `added` puede cobrar el
+  adicional N veces — `{ "optionId": "…", "action": "added", "times": 2 }`
+  = doble tocineta. Entero ≥ 1 **sin tope**; ausente = 1. `priceDelta`
+  en la respuesta ya es el total de línea (`extraPrice × times`) —
+  `times` solo dice cuántas porciones son ("Tocineta ×2"). En `removed`
+  y en reemplazo gratis `times` debe ser 1 (409 si no).
 - **`statusChangedAt`** es el timestamptz de entrada al estado actual
   — al nacer coincide con `createdAt`; cada transición lo re-sella
   (§037.A — la cola del kanban ordena por él, no por `createdAt`).
