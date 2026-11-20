@@ -62,7 +62,9 @@ const groups: GroupSeed[] = [
   { id: u(11), slug: 'ingredients', name: 'Ingredientes', sortOrder: 0 },
 ];
 
-// Ingredientes de la carta real. Pan y salchicha son no-removibles
+// Ingredientes/adicionales de la carta real (imagen "ADICIONALES" —
+// precios verificados contra la carta física 2026-11-20, sort_order =
+// orden de la carta por filas). Pan y salchicha son no-removibles
 // (corazón del perro — regla del usuario) y no se venden como extras.
 const ingredientOptions: OptionSeed[] = [
   { id: u(101), name: 'Pan', extraPrice: 0, isRemovable: false, sortOrder: -1 },
@@ -74,71 +76,71 @@ const ingredientOptions: OptionSeed[] = [
     sortOrder: 0,
   },
   {
-    id: u(103),
-    name: 'Carne desmechada',
-    extraPrice: 6000,
+    id: u(108),
+    name: 'Queso mozzarella',
+    extraPrice: 2000,
     isRemovable: true,
     sortOrder: 1,
   },
   {
-    id: u(104),
-    name: 'Pollo desmechado',
-    extraPrice: 5000,
+    id: u(112),
+    name: 'Huevo de codorniz',
+    extraPrice: 500,
     isRemovable: true,
     sortOrder: 2,
   },
   {
-    id: u(105),
-    name: 'Chile con carne',
-    extraPrice: 5000,
+    id: u(111),
+    name: 'Maíz dulce',
+    extraPrice: 1000,
     isRemovable: true,
     sortOrder: 3,
   },
   {
     id: u(106),
     name: 'Tocineta crocante',
-    extraPrice: 4000,
+    extraPrice: 1500,
     isRemovable: true,
     sortOrder: 4,
   },
   {
-    id: u(107),
-    name: 'Peperoni',
-    extraPrice: 4000,
+    id: u(110),
+    name: 'Piña en trozos',
+    extraPrice: 1000,
     isRemovable: true,
     sortOrder: 5,
   },
   {
-    id: u(108),
-    name: 'Queso mozzarella',
-    extraPrice: 3500,
+    id: u(105),
+    name: 'Chile con carne',
+    extraPrice: 1500,
     isRemovable: true,
     sortOrder: 6,
   },
   {
-    id: u(109),
-    name: 'Salsa de queso cheddar',
-    extraPrice: 4000,
+    id: u(104),
+    name: 'Pollo desmechado',
+    extraPrice: 2500,
     isRemovable: true,
     sortOrder: 7,
   },
   {
-    id: u(110),
-    name: 'Piña en trozos',
-    extraPrice: 2500,
+    id: u(109),
+    name: 'Salsa de queso cheddar',
+    extraPrice: 1000,
     isRemovable: true,
     sortOrder: 8,
   },
   {
-    id: u(111),
-    name: 'Maíz dulce',
+    id: u(103),
+    name: 'Carne desmechada',
     extraPrice: 2500,
     isRemovable: true,
     sortOrder: 9,
   },
   {
-    id: u(112),
-    name: 'Huevo de codorniz',
+    id: u(107),
+    name: 'Peperoni',
     extraPrice: 2500,
     isRemovable: true,
     sortOrder: 10,
@@ -248,6 +250,19 @@ export async function seedCatalogData(manager: EntityManager): Promise<void> {
       .join(', ')}
     ON CONFLICT DO NOTHING
   `);
+
+  // Re-imponer precios/orden de la carta por id — el seed es la fuente
+  // de verdad de los adicionales igual que de los productos.
+  for (const o of ingredientOptions) {
+    await manager.query(
+      `UPDATE "modifier_options" SET
+         "name" = ${q(o.name)},
+         "extra_price" = ${o.extraPrice},
+         "is_removable" = ${o.isRemovable},
+         "sort_order" = ${o.sortOrder}
+       WHERE "id" = ${q(o.id)}`,
+    );
+  }
 
   await manager.query(`
     INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order", "is_featured")
