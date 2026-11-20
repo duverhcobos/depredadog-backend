@@ -25,7 +25,8 @@
     "migration:show": "typeorm-ts-node-commonjs migration:show -d typeorm.config.ts",
     "seed:catalog": "ts-node src/infrastructure/database/seeds/catalog.seed.ts",
     "seed:store": "ts-node src/infrastructure/database/seeds/store.seed.ts",
-    "seed:admin": "ts-node src/infrastructure/database/seeds/admin.seed.ts"
+    "seed:admin": "ts-node src/infrastructure/database/seeds/admin.seed.ts",
+    "seed:reset": "ts-node src/infrastructure/database/seeds/reset.seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

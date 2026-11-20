@@ -1,9 +1,12 @@
 import dataSource from '../../../../typeorm.config';
+import type { EntityManager } from 'typeorm';
 
-// Seed de desarrollo de la carta — idempotente por slugs/nombres.
+// Seed de la carta REAL — fuente única del menú (dev y prod).
 // Uso: npm run seed:catalog
+// Idempotente: UUIDs fijos + ON CONFLICT; re-corre y corrige drift
+// (nombre/descripción/precio se re-imponen por id).
+// reset.seed.ts la reutiliza tras el wipe de producción (propuesta 025).
 
-// UUIDs fijos → ON CONFLICT DO NOTHING hace el seed re-ejecutable.
 const u = (n: number): string =>
   `ca7a1090-0000-4000-8000-${n.toString().padStart(12, '0')}`;
 
@@ -16,21 +19,6 @@ interface CategorySeed {
   sortOrder: number;
 }
 
-interface GroupSeed {
-  id: string;
-  slug: string;
-  name: string;
-  sortOrder: number;
-}
-
-interface OptionSeed {
-  id: string;
-  name: string;
-  extraPrice: number;
-  isRemovable: boolean;
-  sortOrder: number;
-}
-
 interface ProductSeed {
   id: string;
   categoryId: string;
@@ -39,460 +27,124 @@ interface ProductSeed {
   description: string;
   basePrice: number;
   sortOrder: number;
-  /** Hero "El de la casa" en la app — solo uno por categoría. */
+  /** Hero "El de la casa" en la app. */
   isFeatured?: boolean;
-  /** Opciones incluidas por defecto (product_modifier_options). */
-  defaultOptionIds: string[];
 }
 
-// Categorías de la carta (slugs = segmentos de ruta de la app).
+// Una sola categoría por ahora — el dueño descartó & Más, Bebidas y Combos.
 const categories: CategorySeed[] = [
   { id: u(1), slug: 'perros', name: 'Perros', sortOrder: 0 },
-  { id: u(2), slug: 'mas', name: '& Más', sortOrder: 1 },
-  { id: u(3), slug: 'bebidas', name: 'Bebidas', sortOrder: 2 },
-  { id: u(4), slug: 'combos', name: 'Combos', sortOrder: 3 },
 ];
 
-// Grupos compartidos — min_select=0 / max_select=NULL (ilimitados) por
-// defecto; toppings y salsas son gratis e ilimitados en la carta.
-const groups: GroupSeed[] = [
-  { id: u(11), slug: 'ingredients', name: 'Ingredientes', sortOrder: 0 },
-  { id: u(12), slug: 'toppings', name: 'Toppings', sortOrder: 1 },
-  { id: u(13), slug: 'sauces', name: 'Salsas', sortOrder: 2 },
-];
-
-// Adiciones de la carta real (mismo orden = sort_order). Pan no se ofrece
-// en la app pero existe como opción no-removible incluida en todo perro;
-// la salchicha también es no-removible pero ya no se vende como extra
-// (extra_price=0 — el menú no tiene "doble salchicha").
-const ingredientOptions: OptionSeed[] = [
-  { id: u(101), name: 'Pan', extraPrice: 0, isRemovable: false, sortOrder: -1 },
-  {
-    id: u(102),
-    name: 'Salchicha americana',
-    extraPrice: 0,
-    isRemovable: false,
-    sortOrder: 0,
-  },
-  {
-    id: u(103),
-    name: 'Carne desmechada',
-    extraPrice: 6000,
-    isRemovable: true,
-    sortOrder: 1,
-  },
-  {
-    id: u(104),
-    name: 'Pollo desmechado',
-    extraPrice: 5000,
-    isRemovable: true,
-    sortOrder: 2,
-  },
-  {
-    id: u(105),
-    name: 'Chile con carne',
-    extraPrice: 5000,
-    isRemovable: true,
-    sortOrder: 3,
-  },
-  {
-    id: u(106),
-    name: 'Tocineta crocante',
-    extraPrice: 4000,
-    isRemovable: true,
-    sortOrder: 4,
-  },
-  {
-    id: u(107),
-    name: 'Salami',
-    extraPrice: 4000,
-    isRemovable: true,
-    sortOrder: 5,
-  },
-  {
-    id: u(108),
-    name: 'Queso mozzarella',
-    extraPrice: 3500,
-    isRemovable: true,
-    sortOrder: 6,
-  },
-  {
-    id: u(109),
-    name: 'Salsa de queso cheddar',
-    extraPrice: 4000,
-    isRemovable: true,
-    sortOrder: 7,
-  },
-  {
-    id: u(110),
-    name: 'Piña en trozos',
-    extraPrice: 2500,
-    isRemovable: true,
-    sortOrder: 8,
-  },
-  {
-    id: u(111),
-    name: 'Maíz dulce',
-    extraPrice: 2500,
-    isRemovable: true,
-    sortOrder: 9,
-  },
-  {
-    id: u(112),
-    name: 'Huevo de codorniz',
-    extraPrice: 2500,
-    isRemovable: true,
-    sortOrder: 10,
-  },
-];
-
-// Toppings de la carta real — gratis e ilimitados en todos los perros.
-const toppingOptions: OptionSeed[] = [
-  {
-    id: u(121),
-    name: 'Papas ripio',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 0,
-  },
-  {
-    id: u(122),
-    name: 'Cebolla picada',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 1,
-  },
-  {
-    id: u(123),
-    name: 'Tomate picado con cilantro',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 2,
-  },
-  {
-    id: u(124),
-    name: 'Pepinillos agridulces',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 3,
-  },
-  {
-    id: u(125),
-    name: 'Jalapeños',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 4,
-  },
-  {
-    id: u(126),
-    name: 'Tostacos',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 5,
-  },
-  {
-    id: u(127),
-    name: 'Madurito',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 6,
-  },
-  {
-    id: u(128),
-    name: 'Guacamole',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 7,
-  },
-];
-
-// Salsas de la carta real — gratis.
-const sauceOptions: OptionSeed[] = [
-  {
-    id: u(131),
-    name: 'Salsa rosada',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 0,
-  },
-  {
-    id: u(132),
-    name: 'Salsa de tomate',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 1,
-  },
-  {
-    id: u(133),
-    name: 'Salsa de piña',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 2,
-  },
-  {
-    id: u(134),
-    name: 'Salsa de ajo',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 3,
-  },
-  {
-    id: u(135),
-    name: 'Mayomostaza',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 4,
-  },
-  {
-    id: u(136),
-    name: 'Salsa picante',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 5,
-  },
-  {
-    id: u(137),
-    name: 'Salsa Depredador',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 6,
-  },
-  {
-    id: u(138),
-    name: 'BBQ ahumada',
-    extraPrice: 0,
-    isRemovable: true,
-    sortOrder: 7,
-  },
-];
-
-// Los 7 ítems del menú — description = tagline de la carta.
+// La carta real (imágenes del menú físico). Sin grupos de modificadores
+// por ahora → la descripción lleva tagline + ingredientes de cada perro.
 const products: ProductSeed[] = [
   {
     id: u(201),
     categoryId: u(1),
     name: 'El Cachorro',
     slug: 'cachorro',
-    description: 'El primer mordisco de la manada.',
+    description:
+      'El primer mordisco de la manada. Pan, salchicha tipo americana, queso mozzarella y huevo de codorniz.',
     basePrice: 14000,
     sortOrder: 0,
-    defaultOptionIds: [u(101), u(102), u(108), u(112)],
   },
   {
     id: u(202),
     categoryId: u(1),
     name: 'La Trampa',
     slug: 'trampa',
-    description: 'Lo dulce es el anzuelo.',
-    basePrice: 16000,
+    description:
+      'Lo dulce es el anzuelo. Pan, salchicha tipo americana, queso mozzarella, piña en trozos y tocineta crocante.',
+    basePrice: 15000,
     sortOrder: 1,
-    defaultOptionIds: [u(101), u(102), u(108), u(110), u(106)],
   },
   {
     id: u(203),
     categoryId: u(1),
     name: 'Ave de Presa',
     slug: 'ave-presa',
-    description: 'Cayó directo del corral.',
-    basePrice: 18000,
+    description:
+      'Cayó directo del corral. Pan, salchicha, queso mozzarella, pollo desmechado, maíz dulce y huevo de codorniz.',
+    basePrice: 16000,
     sortOrder: 2,
-    defaultOptionIds: [u(101), u(102), u(104), u(111), u(108), u(112)],
   },
   {
     id: u(204),
     categoryId: u(1),
     name: 'El Coyote',
     slug: 'coyote',
-    description: 'Cacería del desierto.',
-    basePrice: 18000,
+    description:
+      'Cacería del desierto. Pan, salchicha, salsa de queso cheddar, chile con carne y maíz dulce.',
+    basePrice: 16000,
     sortOrder: 3,
-    defaultOptionIds: [u(101), u(102), u(105), u(109), u(111)],
   },
   {
     id: u(205),
     categoryId: u(1),
     name: 'El Carnicero',
     slug: 'carnicero',
-    description: 'Carne sobre carne, sin piedad.',
+    description:
+      'Carne sobre carne, sin piedad. Pan, salchicha, queso mozzarella, peperoni y tocineta crocante.',
     basePrice: 17000,
     sortOrder: 4,
-    defaultOptionIds: [u(101), u(102), u(107), u(106), u(108)],
   },
   {
     id: u(206),
     categoryId: u(1),
     name: 'El Depredador',
     slug: 'depredador',
-    description: 'El alfa come de todo.',
-    basePrice: 25000,
+    description:
+      'El alfa come de todo. Pan, salchicha, queso mozzarella, carne desmechada, chile con carne, tocineta crocante, piña en trozos, maíz dulce y huevo de codorniz.',
+    basePrice: 18000,
     sortOrder: 5,
     isFeatured: true,
-    defaultOptionIds: [
-      u(101),
-      u(102),
-      u(103),
-      u(105),
-      u(106),
-      u(110),
-      u(111),
-      u(108),
-      u(112),
-    ],
-  },
-  {
-    id: u(211),
-    categoryId: u(2),
-    name: 'Manada de Papas',
-    slug: 'manada-papas',
-    description: 'Con las salsas de la casa.',
-    basePrice: 10000,
-    sortOrder: 0,
-    defaultOptionIds: [],
   },
 ];
+
+export async function seedCatalogData(manager: EntityManager): Promise<void> {
+  await manager.query(`
+    INSERT INTO "categories" ("id", "slug", "name", "sort_order")
+    VALUES ${categories
+      .map((c) => `(${q(c.id)}, ${q(c.slug)}, ${q(c.name)}, ${c.sortOrder})`)
+      .join(', ')}
+    ON CONFLICT DO NOTHING
+  `);
+
+  await manager.query(`
+    INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order", "is_featured")
+    VALUES ${products
+      .map(
+        (p) =>
+          `(${q(p.id)}, ${q(p.categoryId)}, ${q(p.name)}, ${q(p.slug)}, ${q(p.description)}, ${p.basePrice}, ${p.sortOrder}, ${p.isFeatured ?? false})`,
+      )
+      .join(', ')}
+    ON CONFLICT DO NOTHING
+  `);
+
+  // Re-imponer contenido real por id: filas sembradas con datos viejos
+  // (precio/descripción/nombre) se corrigen en cada corrida — el seed ES
+  // la fuente de verdad de la carta.
+  for (const p of products) {
+    await manager.query(
+      `UPDATE "products" SET
+         "slug" = ${q(p.slug)},
+         "name" = ${q(p.name)},
+         "description" = ${q(p.description)},
+         "base_price" = ${p.basePrice},
+         "sort_order" = ${p.sortOrder},
+         "is_featured" = ${p.isFeatured ?? false},
+         "is_available" = true
+       WHERE "id" = ${q(p.id)}`,
+    );
+  }
+}
 
 async function main(): Promise<void> {
   await dataSource.initialize();
   try {
-    await dataSource.transaction(async (manager) => {
-      await manager.query(`
-        INSERT INTO "categories" ("id", "name", "slug", "sort_order")
-        VALUES ${categories
-          .map(
-            (c) => `(${q(c.id)}, ${q(c.name)}, ${q(c.slug)}, ${c.sortOrder})`,
-          )
-          .join(', ')}
-        ON CONFLICT DO NOTHING
-      `);
-
-      await manager.query(`
-        INSERT INTO "modifier_groups" ("id", "slug", "name", "sort_order")
-        VALUES ${groups.map((g) => `(${q(g.id)}, ${q(g.slug)}, ${q(g.name)}, ${g.sortOrder})`).join(', ')}
-        ON CONFLICT DO NOTHING
-      `);
-
-      const options: { groupId: string; option: OptionSeed }[] = [
-        ...ingredientOptions.map((option) => ({ groupId: u(11), option })),
-        ...toppingOptions.map((option) => ({ groupId: u(12), option })),
-        ...sauceOptions.map((option) => ({ groupId: u(13), option })),
-      ];
-      await manager.query(`
-        INSERT INTO "modifier_options" ("id", "group_id", "name", "extra_price", "is_removable", "sort_order")
-        VALUES ${options
-          .map(
-            ({ groupId, option: o }) =>
-              `(${q(o.id)}, ${q(groupId)}, ${q(o.name)}, ${o.extraPrice}, ${o.isRemovable}, ${o.sortOrder})`,
-          )
-          .join(', ')}
-        ON CONFLICT DO NOTHING
-      `);
-
-      // Carta real: el ON CONFLICT no renombra filas ya sembradas ni pisa
-      // precios — se corrigen con UPDATEs idempotentes por id/nombre.
-      // Ids repurposados de toppings/salsas (u(125) Jalapeños ya quedó igual).
-      const optionRenames: { id: string; name: string }[] = [
-        { id: u(121), name: 'Papas ripio' },
-        { id: u(122), name: 'Cebolla picada' },
-        { id: u(123), name: 'Tomate picado con cilantro' },
-        { id: u(124), name: 'Pepinillos agridulces' },
-        { id: u(131), name: 'Salsa rosada' },
-        { id: u(132), name: 'Salsa de tomate' },
-        { id: u(133), name: 'Salsa de piña' },
-        { id: u(134), name: 'Salsa de ajo' },
-        { id: u(135), name: 'Mayomostaza' },
-        { id: u(136), name: 'Salsa picante' },
-        { id: u(137), name: 'Salsa Depredador' },
-      ];
-      for (const r of optionRenames) {
-        await manager.query(
-          `UPDATE "modifier_options" SET "name" = ${q(r.name)} WHERE "id" = ${q(r.id)} AND "name" <> ${q(r.name)}`,
-        );
-      }
-
-      const optionPrices: { name: string; extraPrice: number }[] = [
-        { name: 'Salchicha americana', extraPrice: 0 },
-        { name: 'Carne desmechada', extraPrice: 6000 },
-        { name: 'Pollo desmechado', extraPrice: 5000 },
-        { name: 'Chile con carne', extraPrice: 5000 },
-        { name: 'Salsa de queso cheddar', extraPrice: 4000 },
-        { name: 'Piña en trozos', extraPrice: 2500 },
-      ];
-      for (const o of optionPrices) {
-        await manager.query(
-          `UPDATE "modifier_options" SET "extra_price" = ${o.extraPrice} WHERE "name" = ${q(o.name)} AND "extra_price" <> ${o.extraPrice}`,
-        );
-      }
-
-      await manager.query(`
-        INSERT INTO "products" ("id", "category_id", "name", "slug", "description", "base_price", "sort_order", "is_featured")
-        VALUES ${products
-          .map(
-            (p) =>
-              `(${q(p.id)}, ${q(p.categoryId)}, ${q(p.name)}, ${q(p.slug)}, ${q(p.description)}, ${p.basePrice}, ${p.sortOrder}, ${p.isFeatured ?? false})`,
-          )
-          .join(', ')}
-        ON CONFLICT DO NOTHING
-      `);
-
-      // Filas sembradas antes de la columna traen el placeholder
-      // 'product-<uuid>' de la migración — se pisan con el slug real.
-      // El flag is_featured se refresca igual: ON CONFLICT no lo toca.
-      for (const p of products) {
-        await manager.query(
-          `UPDATE "products" SET "slug" = ${q(p.slug)} WHERE "id" = ${q(p.id)} AND "slug" <> ${q(p.slug)}`,
-        );
-        await manager.query(
-          `UPDATE "products" SET "is_featured" = ${p.isFeatured ?? false} WHERE "id" = ${q(p.id)} AND "is_featured" <> ${p.isFeatured ?? false}`,
-        );
-      }
-
-      // Perros y papas enlazados a los 3 grupos (ingredientes/toppings/salsas).
-      const productGroupLinks = products.flatMap((p) =>
-        groups.map((g) => ({ productId: p.id, groupId: g.id })),
-      );
-      await manager.query(`
-        INSERT INTO "product_modifier_groups" ("product_id", "group_id")
-        VALUES ${productGroupLinks.map((l) => `(${q(l.productId)}, ${q(l.groupId)})`).join(', ')}
-        ON CONFLICT DO NOTHING
-      `);
-
-      // Defaults por producto: ingredientIds de la carta + pan y salchicha
-      // en TODOS los perros (ambas no-removibles a nivel catálogo).
-      const productOptions = products.flatMap((p) =>
-        p.defaultOptionIds.map((optionId, i) => ({
-          productId: p.id,
-          optionId,
-          sortOrder: i,
-        })),
-      );
-      if (productOptions.length > 0) {
-        await manager.query(`
-          INSERT INTO "product_modifier_options" ("product_id", "option_id", "included_by_default", "sort_order")
-          VALUES ${productOptions
-            .map(
-              (o) =>
-                `(${q(o.productId)}, ${q(o.optionId)}, true, ${o.sortOrder})`,
-            )
-            .join(', ')}
-          ON CONFLICT DO NOTHING
-        `);
-      }
-
-      // Corazón del perro: ni se cambia, ni se regala, y si se agota
-      // tumba el producto (regla del usuario).
-      await manager.query(
-        `UPDATE "modifier_options"
-            SET "is_replaceable" = false,
-                "is_replacement_eligible" = false,
-                "is_essential" = true
-          WHERE "name" IN ('Salchicha americana', 'Pan')`,
-      );
-      // Extras caros: se venden pero no se regalan como cambio gratis.
-      await manager.query(
-        `UPDATE "modifier_options"
-            SET "is_replacement_eligible" = false
-          WHERE "name" IN ('Carne desmechada', 'Pollo desmechado')`,
-      );
+    await dataSource.manager.transaction(async (manager) => {
+      await seedCatalogData(manager);
     });
     console.log('catalog seed applied');
   } finally {
@@ -500,7 +152,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
