@@ -18,6 +18,7 @@ import { join } from 'path';
         synchronize: false, // migrations-workflow — NUNCA true
         migrationsRun: config.get<boolean>('database.migrationsRun')!,
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+        ssl: config.get('database.ssl'),
       }),
     }),
   ],

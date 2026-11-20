@@ -1,0 +1,60 @@
+# Blueprint de Render — depredadog-api (propuesta 024)
+# Uso: Render Dashboard → New → Blueprint Instance → apuntar al repo.
+# Las vars sync:false las pega el dueño en el dashboard (nunca en el repo).
+services:
+  - type: web
+    name: depredadog-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      # Supabase — conexión directa 5432 (MVP; pooler queda en pendientes)
+      - key: DB_HOST # db.<ref>.supabase.co — lo pega el dueño
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_USERNAME
+        value: postgres
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_DATABASE
+        value: postgres
+      - key: DB_SSL
+        value: "true"
+      # Migraciones corren a mano contra Supabase antes del deploy — nunca al boot en prod
+      - key: MIGRATIONS_RUN
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "30"
+      - key: AUTH_CODE_TTL_MINUTES
+        value: "15"
+      - key: CORS_ORIGIN
+        value: "" # API solo-móvil — sin orígenes de navegador
+      - key: THROTTLE_TTL
+        value: "60"
+      - key: THROTTLE_LIMIT
+        value: "100"
+      - key: LOG_LEVEL
+        value: info
+      - key: LOG_DIR
+        value: logs
+      - key: RESEND_API_KEY
+        sync: false # vacío = fallback a log (pendiente 002)
+      - key: EMAIL_FROM
+        value: "Depredadog <onboarding@resend.dev>"
+      - key: PAYMENT_GATEWAY_DRIVER
+        value: sim # nequi cuando lleguen llaves QA
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true
+      - key: STORE_TIMEZONE
+        value: America/Bogota

@@ -12,4 +12,8 @@ export default new DataSource({
   database: process.env.DB_DATABASE ?? 'pcalientes_db',
   entities: ['src/infrastructure/database/schemas/**/*.schema.ts'],
   migrations: ['src/infrastructure/database/migrations/*.ts'],
+  // Mismo SSL que database.config.ts — las migraciones a Supabase
+  // también exigen conexión cifrada (DB_SSL=true).
+  ssl:
+    process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
