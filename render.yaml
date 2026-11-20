@@ -58,7 +58,7 @@ services:
       # aud del idToken de Google — los client IDs OAuth son públicos por
       # diseño (van embebidos en la app). Pendiente app/006.
       - key: GOOGLE_CLIENT_IDS
-        value: 323199681728-75tbhjfu8e9pohi7h3ucmm1smgkpjtsv.apps.googleusercontent.com
+        value: 924464796986-hn07t8pmbosktloo8k4erhohm9v47nct.apps.googleusercontent.com
       - key: PAYMENT_GATEWAY_DRIVER
         value: sim # nequi cuando lleguen llaves QA
       - key: PAYMENT_WEBHOOK_SECRET
