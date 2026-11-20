@@ -30,7 +30,7 @@ const hours: HourSeed[] = [
   { dayOfWeek: 6, opensAt: '17:00', closesAt: '23:00', isClosed: false },
 ];
 
-const tables = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4'];
+const tables = ['Mesa 1', 'Mesa 2'];
 
 async function seed(): Promise<void> {
   await dataSource.initialize();
