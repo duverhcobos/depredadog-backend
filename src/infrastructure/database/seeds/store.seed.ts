@@ -2,8 +2,8 @@ import dataSource from '../../../../typeorm.config';
 
 // Seed de desarrollo de la tienda — idempotente.
 // Uso: npm run seed:store
-// VALORES PLACEHOLDER: el dueño configura horario/fee reales desde el
-// panel admin (módulo futuro). 0=domingo … 6=sábado.
+// Horario real del dueño (2026-11-20): TODOS los días 18:00–22:00
+// hora Colombia. 0=domingo … 6=sábado.
 
 const SETTINGS_ID = '5e11c000-0000-4000-8000-000000000001';
 const bh = (n: number): string =>
@@ -18,16 +18,15 @@ interface HourSeed {
   isClosed: boolean;
 }
 
-// Placeholder: lunes cerrado; mar-sáb 17:00–23:00; dom 16:00–23:00.
-// Día cerrado: horas centinela '00:00' (ignoradas por is_closed).
+// Lunes a domingo 6:00pm–10:00pm hora Colombia — todos los días abre.
 const hours: HourSeed[] = [
-  { dayOfWeek: 0, opensAt: '16:00', closesAt: '23:00', isClosed: false },
-  { dayOfWeek: 1, opensAt: '00:00', closesAt: '00:00', isClosed: true },
-  { dayOfWeek: 2, opensAt: '17:00', closesAt: '23:00', isClosed: false },
-  { dayOfWeek: 3, opensAt: '17:00', closesAt: '23:00', isClosed: false },
-  { dayOfWeek: 4, opensAt: '17:00', closesAt: '23:00', isClosed: false },
-  { dayOfWeek: 5, opensAt: '17:00', closesAt: '23:00', isClosed: false },
-  { dayOfWeek: 6, opensAt: '17:00', closesAt: '23:00', isClosed: false },
+  { dayOfWeek: 0, opensAt: '18:00', closesAt: '22:00', isClosed: false },
+  { dayOfWeek: 1, opensAt: '18:00', closesAt: '22:00', isClosed: false },
+  { dayOfWeek: 2, opensAt: '18:00', closesAt: '22:00', isClosed: false },
+  { dayOfWeek: 3, opensAt: '18:00', closesAt: '22:00', isClosed: false },
+  { dayOfWeek: 4, opensAt: '18:00', closesAt: '22:00', isClosed: false },
+  { dayOfWeek: 5, opensAt: '18:00', closesAt: '22:00', isClosed: false },
+  { dayOfWeek: 6, opensAt: '18:00', closesAt: '22:00', isClosed: false },
 ];
 
 const tables = ['Mesa 1', 'Mesa 2'];
