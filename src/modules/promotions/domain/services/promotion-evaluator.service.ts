@@ -139,8 +139,20 @@ export class PromotionEvaluator {
     result: PromotionEvaluation,
   ): void {
     const cfg = promo.config as PercentOffConfig;
-    if (!cfg.eligibleProductIds?.length || !cfg.minQty || !cfg.percent) return;
+    // Config corrupta → promo saltada (degrada, no rompe el pedido).
+    // sin estos guards un percent>100 haría total negativo y un
+    // roundDownTo:0 produciría NaN persistido en orders/payments.
+    if (
+      !isPlainObject(cfg) ||
+      !cfg.eligibleProductIds?.length ||
+      !isPositiveInt(cfg.minQty) ||
+      typeof cfg.percent !== 'number' ||
+      !(cfg.percent > 0 && cfg.percent <= 100)
+    ) {
+      return;
+    }
     const round = cfg.roundDownTo ?? 1;
+    if (!isPositiveInt(round)) return;
     const idx = availableIdx(cfg.eligibleProductIds);
     if (idx.length < cfg.minQty) return;
     const base = idx.reduce((s, i) => s + units[i].unitPrice, 0);
@@ -164,11 +176,23 @@ export class PromotionEvaluator {
     result: PromotionEvaluation,
   ): void {
     const cfg = promo.config as FreeItemConfig;
-    if (!cfg.eligibleProductIds?.length || !cfg.minQty || !cfg.freeProductId) {
+    if (
+      !isPlainObject(cfg) ||
+      !cfg.eligibleProductIds?.length ||
+      !isPositiveInt(cfg.minQty) ||
+      typeof cfg.freeProductId !== 'string' ||
+      !cfg.freeProductId
+    ) {
       return;
     }
+    const freeQty = cfg.freeQty ?? 1;
+    if (!isPositiveInt(freeQty)) return;
+    // maxQty ausente = sin techo; presente pero inválido = config
+    // ambigua → la promo se salta entera.
+    const cap =
+      cfg.maxQty === undefined ? Number.MAX_SAFE_INTEGER : cfg.maxQty;
+    if (!isPositiveInt(cap) || cap < cfg.minQty) return;
     const idx = availableIdx(cfg.eligibleProductIds);
-    const cap = cfg.maxQty ?? Number.MAX_SAFE_INTEGER;
     if (idx.length < cfg.minQty || idx.length > cap) return;
     // El ahorro es el BASE del producto regalado (sus extras cobran
     // aparte). Deriva de la línea si el pedido ya lo trae; si no, del
@@ -179,14 +203,19 @@ export class PromotionEvaluator {
       cfg.freeProductId,
       productBasePrices,
     );
-    const freeQty = cfg.freeQty ?? 1;
-    if (freeBase === undefined || freeQty <= 0) return;
+    if (freeBase === undefined) return;
     for (const i of idx) consumed[i] = true;
     this.record(result, promo, freeBase * freeQty);
-    if (!items.some((i) => i.productId === cfg.freeProductId)) {
+    // Si el pedido trae menos unidades del regalo que freeQty, se
+    // inyectan las faltantes — el descuento siempre corresponde a
+    // unidades entregadas, nunca a aire.
+    const presentQty = items
+      .filter((i) => i.productId === cfg.freeProductId)
+      .reduce((s, i) => s + i.quantity, 0);
+    if (presentQty < freeQty) {
       result.extraItems.push({
         productId: cfg.freeProductId,
-        quantity: freeQty,
+        quantity: freeQty - presentQty,
         promotionSlug: promo.slug,
       });
     }
@@ -204,8 +233,18 @@ export class PromotionEvaluator {
   ): void {
     const cfg = promo.config as FixedBundleConfig;
     // qty < 1 = config inválida; además un set sin consumo haría loop
-    // infinito — la guarda lo vuelve imposible.
-    if (!cfg.items?.length || cfg.items.some((c) => !c.qty || c.qty < 1)) {
+    // infinito — la guarda lo vuelve imposible. price debe ser número
+    // ≥0: undefined → NaN persistido, null → "bundle gratis".
+    if (
+      !isPlainObject(cfg) ||
+      typeof cfg.price !== 'number' ||
+      !Number.isFinite(cfg.price) ||
+      cfg.price < 0 ||
+      !cfg.items?.length ||
+      cfg.items.some(
+        (c) => !isPlainObject(c) || !isPositiveInt(c.qty) || !c.productId,
+      )
+    ) {
       return;
     }
     const perSet = this.perSetSaving(cfg, units, availableIdx);
@@ -283,4 +322,15 @@ export class PromotionEvaluator {
       saving,
     });
   }
+}
+
+// ── Guards de config (jsonb viene de la BD — no confiar en el tipo) ──
+// Una promo mal configurada se SALTA, nunca rompe el pedido ni persiste
+// NaN/negativos en discount/total/payment.
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function isPositiveInt(v: unknown): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v > 0;
 }

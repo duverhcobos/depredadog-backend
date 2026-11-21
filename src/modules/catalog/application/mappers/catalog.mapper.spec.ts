@@ -243,5 +243,25 @@ describe('CatalogMapper', () => {
       expect(display.priceLabel).toBe('$36.000');
       expect(display.componentProductIds).toEqual(['d-dep', 'd-dep']);
     });
+
+    it('config corrupta → card degrada a null, nunca lanza', () => {
+      const dto = mapper.toCatalogResponse(
+        result(
+          [],
+          [
+            promo(PromotionKind.FIXED_BUNDLE, {
+              /* price ausente */
+            }),
+            promo(PromotionKind.FIXED_BUNDLE, null!),
+            promo(PromotionKind.PERCENT_OFF, { minQty: 4 }),
+          ],
+        ),
+      );
+
+      expect(dto.promotions[0].display.priceLabel).toBeNull();
+      expect(dto.promotions[0].display.componentProductIds).toBeUndefined();
+      expect(dto.promotions[1].display.priceLabel).toBeNull();
+      expect(dto.promotions[2].display.priceLabel).toBeNull();
+    });
   });
 });

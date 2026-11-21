@@ -96,38 +96,49 @@ export class CatalogMapper {
   ): PromotionDisplayResponseDto {
     const dto = new PromotionDisplayResponseDto();
     switch (p.kind) {
+      // Config corrupta → card degrada (label null / sin ids), nunca
+      // 500 en el home de la app. El evaluador tiene guards espejo.
       case PromotionKind.FIXED_BUNDLE: {
         const cfg = p.config as FixedBundleConfig;
-        dto.priceLabel = cop(cfg.price);
-        dto.componentProductIds = expandUnits(cfg.items);
+        dto.priceLabel =
+          typeof cfg?.price === 'number' && Number.isFinite(cfg.price)
+            ? cop(cfg.price)
+            : null;
+        if (Array.isArray(cfg?.items)) {
+          dto.componentProductIds = expandUnits(cfg.items);
+        }
         break;
       }
       case PromotionKind.FREE_ITEM: {
         const cfg = p.config as FreeItemConfig;
         const cheapest = Math.min(
-          ...(cfg.eligibleProductIds ?? [])
+          ...(cfg?.eligibleProductIds ?? [])
             .map((id) => productBasePrices.get(id))
             .filter((x): x is number => x !== undefined),
         );
         // "desde $28.000" = el umbral mínimo más barato (minQty × el
         // elegible más barato). Sin elegibles ordenables → sin label.
-        dto.priceLabel = Number.isFinite(cheapest)
-          ? `desde ${cop(cheapest * cfg.minQty)}`
-          : null;
-        dto.eligibleProductIds = cfg.eligibleProductIds ?? [];
-        dto.freeProductId = cfg.freeProductId;
+        dto.priceLabel =
+          Number.isFinite(cheapest) && typeof cfg?.minQty === 'number'
+            ? `desde ${cop(cheapest * cfg.minQty)}`
+            : null;
+        dto.eligibleProductIds = cfg?.eligibleProductIds ?? [];
+        dto.freeProductId = cfg?.freeProductId;
         break;
       }
       case PromotionKind.PERCENT_OFF: {
         const cfg = p.config as PercentOffConfig;
-        dto.priceLabel = `−${cfg.percent}%`;
-        dto.eligibleProductIds = cfg.eligibleProductIds ?? [];
+        dto.priceLabel =
+          typeof cfg?.percent === 'number'
+            ? `−${cfg.percent}%`
+            : null;
+        dto.eligibleProductIds = cfg?.eligibleProductIds ?? [];
         break;
       }
       case PromotionKind.SHOWCASE: {
         const cfg = p.config as ShowcaseConfig;
-        dto.priceLabel = cfg.priceLabel ?? null;
-        if (cfg.items?.length) {
+        dto.priceLabel = cfg?.priceLabel ?? null;
+        if (cfg?.items?.length) {
           dto.componentProductIds = expandUnits(cfg.items);
         }
         break;

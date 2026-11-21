@@ -349,4 +349,123 @@ describe('PromotionEvaluator (§027)', () => {
       expect(r.appliedPromotions).toEqual([]);
     });
   });
+
+  // Config corrupta (jsonb editado a mano): la promo se SALTA —
+  // nunca NaN, nunca negativo, nunca excepción en el pedido.
+  describe('config corrupta → promo saltada', () => {
+    it('percent > 100 → no dispara', () => {
+      const r = evaluator.evaluate(
+        [item('d1', 4, 14000)],
+        [
+          promo('manada-rota', PromotionKind.PERCENT_OFF, {
+            eligibleProductIds: DOGS,
+            minQty: 4,
+            percent: 150,
+            roundDownTo: 500,
+          }),
+        ],
+        noPrices,
+      );
+      expect(r.discount).toBe(0);
+      expect(r.appliedPromotions).toEqual([]);
+    });
+
+    it('roundDownTo 0 → no NaN, no dispara', () => {
+      const r = evaluator.evaluate(
+        [item('d1', 4, 14000)],
+        [
+          promo('manada-rota', PromotionKind.PERCENT_OFF, {
+            eligibleProductIds: DOGS,
+            minQty: 4,
+            percent: 15,
+            roundDownTo: 0,
+          }),
+        ],
+        noPrices,
+      );
+      expect(r.discount).toBe(0);
+      expect(r.appliedPromotions).toEqual([]);
+    });
+
+    it('minQty negativo → no dispara en pedido vacío de elegibles', () => {
+      const r = evaluator.evaluate(
+        [item('bebida', 1, 3000)],
+        [
+          promo('free-roto', PromotionKind.FREE_ITEM, {
+            eligibleProductIds: DOGS,
+            minQty: -1,
+            freeProductId: PAPAS,
+            freeQty: 1,
+          }),
+        ],
+        papasPrice,
+      );
+      expect(r.discount).toBe(0);
+      expect(r.appliedPromotions).toEqual([]);
+    });
+
+    it('bundle sin price → no dispara (nunca "gratis")', () => {
+      const r = evaluator.evaluate(
+        [item(CACHORRO, 1, 14000), item(PAPAS, 1, 5000)],
+        [
+          promo('bundle-roto', PromotionKind.FIXED_BUNDLE, {
+            items: [
+              { productId: CACHORRO, qty: 1 },
+              { productId: PAPAS, qty: 1 },
+            ],
+          }),
+        ],
+        noPrices,
+      );
+      expect(r.discount).toBe(0);
+      expect(r.appliedPromotions).toEqual([]);
+    });
+
+    it('bundle price null → no dispara', () => {
+      const r = evaluator.evaluate(
+        [item(CACHORRO, 1, 14000), item(PAPAS, 1, 5000)],
+        [
+          promo('bundle-roto', PromotionKind.FIXED_BUNDLE, {
+            items: [
+              { productId: CACHORRO, qty: 1 },
+              { productId: PAPAS, qty: 1 },
+            ],
+            price: null,
+          }),
+        ],
+        noPrices,
+      );
+      expect(r.discount).toBe(0);
+      expect(r.appliedPromotions).toEqual([]);
+    });
+
+    it('config null → no lanza, no dispara', () => {
+      const r = evaluator.evaluate(
+        [item('d1', 4, 14000)],
+        [promo('nula', PromotionKind.PERCENT_OFF, null!)],
+        noPrices,
+      );
+      expect(r.discount).toBe(0);
+      expect(r.appliedPromotions).toEqual([]);
+    });
+
+    it('freeQty parcial: pedido trae 1 de 2 → inyecta solo la faltante', () => {
+      const r = evaluator.evaluate(
+        [item('d2', 2, 15000), item(PAPAS, 1, 5000)],
+        [
+          promo('papas-x2', PromotionKind.FREE_ITEM, {
+            eligibleProductIds: DOGS,
+            minQty: 2,
+            freeProductId: PAPAS,
+            freeQty: 2,
+          }),
+        ],
+        papasPrice,
+      );
+      expect(r.discount).toBe(10000);
+      expect(r.extraItems).toEqual([
+        { productId: PAPAS, quantity: 1, promotionSlug: 'papas-x2' },
+      ]);
+    });
+  });
 });

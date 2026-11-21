@@ -79,9 +79,9 @@ export class OrderPromotionsApplier {
   // Precios base de los productos que las promos referencian y el
   // pedido NO trae — hoy solo hace falta para el freeProductId
   // auto-inyectado (lo que ya está en ítems lo deriva el evaluador).
-  // getOrderableProducts filtra agotados/categorías inactivas: si el
-  // regalo no se puede vender tampoco se regala — el evaluador ve el
-  // id sin precio y la promo no dispara.
+  // Un regalo agotado llega CON precio y la promo dispara — pero la
+  // inyección pasa por itemsBuilder.build, que lanza
+  // OrderCatalogViolationException y se retira completa (ver apply).
   private async referencedPrices(
     promos: Promotion[],
     items: OrderItem[],

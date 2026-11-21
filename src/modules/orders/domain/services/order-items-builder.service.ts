@@ -160,6 +160,13 @@ export class OrderItemsBuilder {
         mods
           .filter((m) => m.action === ModifierAction.ADDED)
           .reduce((s, m) => s + m.priceDelta, 0);
+      // quantity entero ≥1 — el DTO de la API lo valida, pero callers
+      // internos (inyección de ítems gratis de promos) lo bypasean.
+      if (!Number.isInteger(dto.quantity) || dto.quantity < 1) {
+        throw new OrderCatalogViolationException(
+          `Cantidad inválida para ${product.slug}: ${dto.quantity}`,
+        );
+      }
       // OrderItem con snapshots — el producto puede renombrarse o
       // cambiar de precio después.
       const item = new OrderItem();

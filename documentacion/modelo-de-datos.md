@@ -466,102 +466,82 @@ Pagos por pedido: efectivo, transferencia manual y pasarela online, con reembols
 
 ---
 
-## Módulo `promotions` — aprobado
+## Módulo `promotions` — implementado (§027, motor de combos)
 
-Cupones con código, descuentos automáticos, bono de bienvenida por dispositivo, programa de referidos y segmentación por perfil.
+El motor de combos de la carta: reglas declarativas por `kind` + `config`
+jsonb que el `PromotionEvaluator` aplica sobre el contenido del pedido.
+Las promos NO son productos del catálogo — el cliente pide perros sueltos
+y el servidor detecta los patrones y materializa el ahorro en
+`orders.discount` + `orders.applied_promotions`.
 
 ### `promotions`
 
 | Columna | Tipo | Null | Notas |
 |---|---|---|---|
 | `id` | uuid PK | | |
-| `name` | varchar(150) | NOT NULL | "20% perros finde" |
-| `description` | text | NULL | |
-| `kind` | enum `promotion_kind` | NOT NULL | `coupon` \| `automatic` \| `welcome` \| `referral` |
-| `reward_type` | enum `reward_type` | NOT NULL | `percent` \| `fixed_amount` \| `free_delivery` |
-| `reward_value` | numeric(10,2) | NULL | 20 = %, 5000 = monto; NULL en `free_delivery` |
-| `code` | varchar(50) UNIQUE | NULL | "PERRO10" — solo `kind=coupon` |
-| `segment` | enum `promo_segment` | NOT NULL, default `all` | `all` \| `new` \| `inactive` \| `frequent` |
-| `segment_param` | int | NULL | `inactive`+30 = 30 días sin pedir; `frequent`+10 = 10+ pedidos |
-| `applies_to` | enum `promo_scope` | NOT NULL, default `order` | `order` \| `product` \| `category` |
-| `min_order_amount` | numeric(10,2) | NULL | Compra mínima para aplicar |
-| `starts_at` / `ends_at` | timestamptz | NULL | Vigencia |
-| `max_uses_total` | int | NULL | Tope global de redenciones |
-| `max_uses_per_user` | int | NOT NULL, default 1 | "1 por cliente" |
-| `is_active` | boolean | NOT NULL, default true | |
+| `slug` | varchar(60) UNIQUE | NOT NULL | Clave estable del snapshot (`applied_promotions[].slug`) |
+| `name` | varchar(100) | NOT NULL | "Papas Gratis" — se muestra en card y comanda |
+| `tagline` | varchar(160) | NULL | Frase de marca de la card ("La manada pone las papas.") |
+| `kind` | enum `promotion_kind` | NOT NULL | `fixed_bundle` \| `free_item` \| `percent_off` \| `showcase` |
+| `config` | jsonb | NOT NULL | Parámetros de la regla por kind (abajo) |
+| `is_active` | boolean | NOT NULL, default true | Switch del dueño — apaga la promo sin borrarla |
+| `sort_order` | int | NOT NULL, default 0 | Orden del rail de Combos en la app |
 | `created_at` / `updated_at` | timestamptz | NOT NULL | |
 
-Índices: `INDEX(code)`, `INDEX(is_active, starts_at, ends_at)` (promos vigentes), `INDEX(segment)`.
+Índices: `UNIQUE(slug)`, índice parcial `(sort_order) WHERE is_active`
+(la única lectura es "activas ordenadas" para /catalog y para create order).
 
-### `promotion_targets`
+**`config` por kind** (el evaluador la valida en runtime — config
+corrupta → promo saltada, nunca rompe el pedido ni persiste NaN):
 
-Scope de producto/categoría — solo se llena si `applies_to` no es `order`.
+- `fixed_bundle`: `{ items: [{ productId, qty }], price }` — set completo a
+  precio cerrado; ahorro = Σ(base × qty) − price. Cubre solo el **base**
+  del producto; extras/modificadores cobran aparte.
+- `free_item`: `{ eligibleProductIds, minQty, maxQty?, freeProductId,
+  freeQty? }` — al juntar `minQty..maxQty` unidades elegibles, `freeQty`
+  unidades de `freeProductId` quedan a $0 (se inyectan si el pedido no las
+  trae; si trae menos que `freeQty`, se inyectan las faltantes).
+- `percent_off`: `{ eligibleProductIds, minQty, percent, roundDownTo }` —
+  `percent%` del lineTotal (base + extras) de las unidades elegibles,
+  redondeado hacia abajo al múltiplo `roundDownTo`.
+- `showcase`: `{ items?, priceLabel? }` — card presentacional que el motor
+  **no evalúa**; su oferta real la cubre otra promo activa (Dúo Alfa es
+  showcase de la regla papas-gratis).
 
-| Columna | Tipo | Null | Notas |
-|---|---|---|---|
-| `id` | uuid PK | | |
-| `promotion_id` | uuid FK → `promotions` ON DELETE CASCADE | NOT NULL | |
-| `product_id` | uuid FK → `products` | NULL | |
-| `category_id` | uuid FK → `categories` | NULL | `CHECK`: exactamente uno de los dos |
+**Precedencia** (`KIND_PRECEDENCE`): `percent_off` → `free_item` →
+`fixed_bundle` → `showcase`. Cada unidad de producto se consume UNA sola
+vez — los tiers no stackean (4+ perros ganan el −15% y ya no quedan
+unidades para papas-gratis ni bundles).
 
-Índices: `INDEX(promotion_id)`, `INDEX(product_id)`, `INDEX(category_id)`.
-
-### `user_promotions`
-
-Billetera de promos otorgadas al usuario (referidos, bonos, regalos del admin).
-
-| Columna | Tipo | Null | Notas |
-|---|---|---|---|
-| `id` | uuid PK | | |
-| `user_id` | uuid FK → `users` | NOT NULL | |
-| `promotion_id` | uuid FK → `promotions` | NOT NULL | |
-| `source` | enum `promo_source` | NOT NULL | `welcome` \| `referral` \| `admin_grant` |
-| `status` | enum `user_promo_status` | NOT NULL, default `available` | `available` \| `redeemed` \| `expired` |
-| `redeemed_order_id` | uuid FK → `orders` | NULL | |
-| `created_at` / `redeemed_at` | timestamptz | NOT NULL / NULL | |
-
-Índices: `INDEX(user_id, status)` (billetera del cliente), `UNIQUE(user_id, promotion_id, source)` donde aplique.
-
-### `promotion_redemptions`
-
-Auditoría de cada uso — incluye la huella del dispositivo para la regla anti-fraude.
+### `orders` — columnas de promoción
 
 | Columna | Tipo | Null | Notas |
 |---|---|---|---|
-| `id` | uuid PK | | |
-| `promotion_id` | uuid FK → `promotions` | NOT NULL | |
-| `user_id` | uuid FK → `users` | NOT NULL | |
-| `order_id` | uuid FK → `orders` | NOT NULL | |
-| `device_fingerprint` | varchar(255) | NULL | Regla "1 por dispositivo" del bono welcome |
-| `amount_discounted` | numeric(10,2) | NOT NULL | Cuánto descontó realmente |
-| `created_at` | timestamptz | NOT NULL | |
+| `discount` | numeric(10,2) | NOT NULL, default 0 | Σ ahorro de las promos aplicadas; `total = subtotal + deliveryFee − discount` |
+| `applied_promotions` | jsonb | NULL | Snapshot `[{ slug, name, saving }]` — sobrevive a desactivar/editar la promo; NULL/`[]` = nada aplicó |
 
-Índices: `INDEX(promotion_id)` (conteo de usos vs `max_uses_total`), `INDEX(user_id, promotion_id)` (tope por usuario), `INDEX(device_fingerprint)` (anti-fraude welcome).
+### Carta de combos sembrada (§027)
 
-### `referrals`
-
-Ciclo de vida del referido — complementa `users.referred_by` con estado y conversión.
-
-| Columna | Tipo | Null | Notas |
+| slug | kind | Regla | Ahorro |
 |---|---|---|---|
-| `id` | uuid PK | | |
-| `referrer_id` | uuid FK → `users` | NOT NULL | Quien invitó |
-| `referred_id` | uuid FK → `users` UNIQUE | NOT NULL | Quien se registró — un solo referrer |
-| `status` | enum `referral_status` | NOT NULL, default `registered` | `registered` → `converted` → `rewarded` |
-| `reward_promotion_id` | uuid FK → `promotions` | NULL | Promo `kind=referral` que premia ambos lados |
-| `converted_order_id` | uuid FK → `orders` | NULL | El primer pedido que lo convirtió |
-| `created_at` / `converted_at` | timestamptz | NOT NULL / NULL | |
+| `combo-cachorro` | fixed_bundle | Cachorro + papas = $17.000 | $2.000 por set |
+| `papas-gratis` | free_item | 2–3 perros elegibles → 1 papas a $0 | $5.000 |
+| `duo-alfa` | showcase | Card exhibidora (2× Depredador + papas $36.000) — cubre `papas-gratis` | — |
+| `manada-15` | percent_off | 4+ perros elegibles → −15% líneas de perro | ~$8–10k |
 
-Índices: `INDEX(referrer_id, status)` ("mis referidos"), `INDEX(status)` (pendientes de recompensa).
+### Decisión futura — cupones/referidos (propuesta, NO implementada)
 
-### Decisiones tomadas (`promotions`)
-
-- **Bono de bienvenida**: `kind=welcome` + validación de `promotion_redemptions.device_fingerprint` — **1 por dispositivo, canjeable en el primer pedido**.
-- **Referidos**: `referred` completa primer pedido → `converted` → se insertan `user_promotions` a **ambos** lados → `rewarded`.
-- **1 promo por pedido** — sin stacking; `orders.discount` materializa el descuento elegido.
-- **Premios**: `%`, monto fijo, envío gratis (sin producto gratis/2x1 por ahora).
-- **Segmentación por lista cerrada** (`segment` + `segment_param` por promo) — los umbrales se definen por promo, no config global.
-- `automatic` aplica sola en checkout (happy hour = `applies_to` + ventana de vigencia); `coupon` exige código.
+Existía un diseño aprobado para cupones con código, bono de bienvenida,
+programa de referidos y segmentación (`coupon|automatic|welcome|referral`
++ `promotion_targets`/`user_promotions`/`promotion_redemptions`/
+`referrals`). **Colisiona con lo implementado**: usa el mismo nombre de
+tabla `promotions` y de enum `promotion_kind` con semántica distinta.
+Cuando se retome, la propuesta debe reconciliar: o se renombra el nuevo
+modelo (`coupons`/`user_coupons`…) o se extiende `promotions` con kinds
+nuevos y columnas/tablas satélite (`code`, vigencia, segmentación) sin
+romper el motor de combos. Mientras tanto, de ese diseño solo quedan
+vigentes las ideas de negocio (1 bono por dispositivo, referidos con
+recompensa bilateral), no el esquema.
 
 ---
 
