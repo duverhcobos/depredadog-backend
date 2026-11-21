@@ -93,6 +93,7 @@
   "subtotal": 18000,
   "deliveryFee": 0,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 18000,
   "notes": null,
   "cancelReason": null,
@@ -149,6 +150,7 @@
   "subtotal": 14000,
   "deliveryFee": 2000,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 16000,
   "notes": "Tocar el timbre dos veces",
   "cancelReason": null,
@@ -259,6 +261,24 @@ reintentar con el mismo `clientRequestId` sin dejar pedidos huérfanos.
 - **`statusChangedAt`** es el timestamptz de entrada al estado actual
   — al nacer coincide con `createdAt`; cada transición lo re-sella
   (§037.A — la cola del kanban ordena por él, no por `createdAt`).
+- **Promociones (§027)**: el motor evalúa el contenido del pedido
+  server-side tras revalidar el catálogo — los ítems llegan sueltos y
+  las ofertas activas se aplican solas (como pedir "así" en el
+  mostrador). `discount` es el ahorro total y `appliedPromotions` el
+  snapshot `[{slug, name, saving}]` de qué descontó (sobrevive a que la
+  promo se desactive después; pedidos viejos responden `[]`). Reglas:
+  - `fixed_bundle` (combo-cachorro): set cerrado a precio fijo —
+    ahorro = Σ base de componentes − precio del combo; los extras de
+    modificadores cobran aparte.
+  - `free_item` (papas-gratis): 2-3 unidades elegibles → 1× papas a $0.
+    Si el pedido ya trae papas cubre su línea; si no, el ítem se
+    **auto-inyecta** a `unitPrice` real y el descuento lo neta.
+  - `percent_off` (manada-15): 4+ unidades elegibles → −15% de esos
+    lineTotals (base + modificadores), redondeo a $500 hacia abajo.
+  - Tiers **excluyentes**: cada unidad se consume una vez (4+ → solo
+    manada). Bebidas, & más y deliveryFee jamás descuentan.
+  - `minDeliveryOrder` evalúa `subtotal − discount` — lo que el cliente
+    paga, no el valor de carta.
 - **Snapshot de dirección**: `deliveryAddress` guarda
   `"landmark (neighborhood)"` como texto — borrar la dirección después
   no altera el pedido. `deliveryLocationLink` viaja aparte.

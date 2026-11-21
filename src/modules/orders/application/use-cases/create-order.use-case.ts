@@ -29,6 +29,7 @@ import {
   ORDER_REPOSITORY,
 } from '../../domain/repositories/order.repository.interface';
 import { OrderItemsBuilder } from '../../domain/services/order-items-builder.service';
+import { OrderPromotionsApplier } from '../services/order-promotions.service';
 
 export interface CreateOrderItemModifierCommand {
   optionId: string;
@@ -70,6 +71,7 @@ export class CreateOrderUseCase {
     @Inject(ADDRESS_REPOSITORY)
     private readonly addresses: IAddressRepository,
     private readonly itemsBuilder: OrderItemsBuilder,
+    private readonly promoApplier: OrderPromotionsApplier,
     private readonly config: ConfigService,
   ) {}
 
@@ -96,15 +98,22 @@ export class CreateOrderUseCase {
     }
     // 4. Revalidación de catálogo — precios SIEMPRE de la BD (la
     // comparte con el canal presencial vía OrderItemsBuilder).
-    const items = await this.itemsBuilder.build(cmd.items);
+    let items = await this.itemsBuilder.build(cmd.items);
+    // 4b. Motor de promociones (§027): detecta patrones elegibles sobre
+    // los ítems ya construidos y puede inyectar el ítem de la casa
+    // (papas gratis) — su unitPrice es real, el discount lo neta.
+    const promo = await this.promoApplier.apply(items);
+    items = promo.items;
     const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
     // 5. Reglas de servicio/pago y snapshots.
     const deliveryFee =
       cmd.serviceType === 'delivery' ? settings.deliveryFee : 0;
+    // El mínimo de delivery evalúa lo que el cliente PAGA
+    // (subtotal − discount), no el valor de carta del pedido.
     if (
       cmd.serviceType === 'delivery' &&
       settings.minDeliveryOrder !== null &&
-      subtotal < settings.minDeliveryOrder
+      subtotal - promo.discount < settings.minDeliveryOrder
     ) {
       throw new MinOrderAmountException(settings.minDeliveryOrder);
     }
@@ -116,7 +125,9 @@ export class CreateOrderUseCase {
     order.orderDate = this.businessDate(now, tz);
     order.subtotal = subtotal;
     order.deliveryFee = deliveryFee;
-    order.total = subtotal + deliveryFee;
+    order.discount = promo.discount;
+    order.appliedPromotions = promo.appliedPromotions;
+    order.total = subtotal + deliveryFee - promo.discount;
     order.notes = cmd.notes?.trim() || null;
     order.items = items;
     // contact_phone §024 — solo delivery; pickup lo rechaza en paso 2.

@@ -37,7 +37,9 @@ import {
   IOrderRepository,
   ORDER_REPOSITORY,
 } from '../../domain/repositories/order.repository.interface';
+import { OrderItem } from '../../domain/entities/order-item.entity';
 import { OrderItemsBuilder } from '../../domain/services/order-items-builder.service';
+import { OrderPromotionsApplier } from '../services/order-promotions.service';
 import {
   CreateOrderCommand,
   CreateOrderUseCase,
@@ -117,6 +119,7 @@ describe('CreateOrderUseCase', () => {
   let catalog: jest.Mocked<ICatalogRepository>;
   let store: jest.Mocked<IStoreRepository>;
   let addresses: jest.Mocked<IAddressRepository>;
+  let promoApplier: { apply: jest.Mock };
 
   const base: CreateOrderCommand = {
     customerId: 'u1',
@@ -174,6 +177,14 @@ describe('CreateOrderUseCase', () => {
       saveAsExclusiveDefault: jest.fn(),
       delete: jest.fn(),
     };
+    // Applier mockeado — el motor tiene su spec exhaustivo; acá se
+    // prueba que el use-case propaga su resultado (ítems inyectados,
+    // discount, snapshot) y el orden correcto del mínimo de delivery.
+    promoApplier = {
+      apply: jest.fn((items: OrderItem[]) =>
+        Promise.resolve({ items, discount: 0, appliedPromotions: [] }),
+      ),
+    };
     const config = { get: jest.fn().mockReturnValue('America/Bogota') };
 
     store.getSettings.mockResolvedValue(settings());
@@ -196,6 +207,7 @@ describe('CreateOrderUseCase', () => {
         { provide: CATALOG_REPOSITORY, useValue: catalog },
         { provide: STORE_REPOSITORY, useValue: store },
         { provide: ADDRESS_REPOSITORY, useValue: addresses },
+        { provide: OrderPromotionsApplier, useValue: promoApplier },
         { provide: ConfigService, useValue: config },
       ],
     }).compile();
@@ -1009,5 +1021,94 @@ describe('CreateOrderUseCase', () => {
       PaymentDispatchFailedException,
     );
     expect(orders.createAggregate).not.toHaveBeenCalled();
+  });
+
+  // §027 — integración del motor de promociones: el applier devuelve
+  // los ítems finales (con inyectados), el discount y el snapshot; el
+  // use-case los propaga al agregado y al payment.
+  describe('promociones (§027)', () => {
+    function papasInyectada(): OrderItem {
+      const i = new OrderItem();
+      i.productId = 'p-papas';
+      i.productName = 'Papas a la francesa';
+      i.unitPrice = 5000;
+      i.quantity = 1;
+      i.lineTotal = 5000;
+      i.modifiers = [];
+      return i;
+    }
+
+    it('discount + ítem inyectado + appliedPromotions entran al agregado; payment.amount = total neto', async () => {
+      promoApplier.apply.mockImplementation((items: OrderItem[]) =>
+        Promise.resolve({
+          items: [...items, papasInyectada()],
+          discount: 5000,
+          appliedPromotions: [
+            { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+          ],
+        }),
+      );
+
+      const order = await useCase.execute(base);
+
+      expect(order.items).toHaveLength(2);
+      expect(order.subtotal).toBe(14000 + 5000); // incluye la inyectada
+      expect(order.discount).toBe(5000);
+      expect(order.total).toBe(19000 - 5000);
+      expect(order.appliedPromotions).toEqual([
+        { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+      ]);
+      expect(order.payment?.amount).toBe(14000);
+    });
+
+    it('sin promo aplicable → discount 0, appliedPromotions [], total intacto', async () => {
+      const order = await useCase.execute(base);
+      expect(order.discount).toBe(0);
+      expect(order.appliedPromotions).toEqual([]);
+      expect(order.total).toBe(order.subtotal);
+    });
+
+    it('minDeliveryOrder evalúa subtotal − discount, no el valor de carta', async () => {
+      // Pedido de 14.000 con papas inyectada (subtotal 19.000) y
+      // discount 5.000 → el cliente paga 14.000 < mínimo 16.000.
+      store.getSettings.mockResolvedValue(
+        settings({ minDeliveryOrder: 16000 }),
+      );
+      promoApplier.apply.mockImplementation((items: OrderItem[]) =>
+        Promise.resolve({
+          items: [...items, papasInyectada()],
+          discount: 5000,
+          appliedPromotions: [
+            { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+          ],
+        }),
+      );
+
+      await expect(useCase.execute(deliveryCmd)).rejects.toBeInstanceOf(
+        MinOrderAmountException,
+      );
+      expect(orders.createAggregate).not.toHaveBeenCalled();
+    });
+
+    it('subtotal − discount ≥ mínimo → pasa aunque el bruto estuviera sobre el mínimo', async () => {
+      // Bruto 19.000 < mínimo 30.000 sería 409 sin la regla neta;
+      // neto 14.000... igual <30.000 — usar mínimo 14.000 para el borde.
+      store.getSettings.mockResolvedValue(
+        settings({ minDeliveryOrder: 14000 }),
+      );
+      promoApplier.apply.mockImplementation((items: OrderItem[]) =>
+        Promise.resolve({
+          items: [...items, papasInyectada()],
+          discount: 5000,
+          appliedPromotions: [
+            { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+          ],
+        }),
+      );
+
+      const order = await useCase.execute(deliveryCmd);
+      // neto 14.000 = mínimo exacto → pasa; total = 19.000+2.000−5.000.
+      expect(order.total).toBe(16000);
+    });
   });
 });

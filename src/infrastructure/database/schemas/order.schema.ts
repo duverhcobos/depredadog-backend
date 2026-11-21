@@ -60,6 +60,13 @@ export const OrderSchema = new EntitySchema<Order>({
       transformer: numeric,
       default: 0,
     },
+    // Snapshot [{slug,name,saving}] de las promos aplicadas (§027) —
+    // NULL en pedidos anteriores al motor (la respuesta los da como []).
+    appliedPromotions: {
+      name: 'applied_promotions',
+      type: 'jsonb',
+      nullable: true,
+    },
     total: {
       type: 'numeric',
       precision: 10,

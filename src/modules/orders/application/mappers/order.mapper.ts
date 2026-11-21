@@ -41,6 +41,12 @@ export class OrderMapper {
     dto.subtotal = order.subtotal;
     dto.deliveryFee = order.deliveryFee;
     dto.discount = order.discount;
+    // Pedidos previos al motor tienen NULL — el contrato da [].
+    dto.appliedPromotions = (order.appliedPromotions ?? []).map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      saving: p.saving,
+    }));
     dto.total = order.total;
     dto.notes = order.notes;
     dto.cancelReason = order.cancelReason;

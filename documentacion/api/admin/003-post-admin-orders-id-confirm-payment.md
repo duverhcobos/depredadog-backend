@@ -56,6 +56,7 @@ completa del pedido.
   "subtotal": 28000,
   "deliveryFee": 0,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 28000,
   "notes": "Sin picante en uno",
   "cancelReason": null,

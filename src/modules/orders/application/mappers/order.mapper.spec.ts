@@ -122,6 +122,26 @@ describe('OrderMapper', () => {
     expect(dto.items[0].modifiers).toEqual([]);
   });
 
+  it('appliedPromotions null (pedido viejo) → [] en la respuesta (§027)', () => {
+    const o = order();
+    o.appliedPromotions = null;
+    const dto = mapper.toResponse(o);
+    expect(dto.appliedPromotions).toEqual([]);
+  });
+
+  it('appliedPromotions poblado → snapshot {slug,name,saving} en la respuesta', () => {
+    const o = order();
+    o.discount = 5000;
+    o.appliedPromotions = [
+      { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+    ];
+    const dto = mapper.toResponse(o);
+    expect(dto.discount).toBe(5000);
+    expect(dto.appliedPromotions).toEqual([
+      { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+    ]);
+  });
+
   it('toListResponse arma el envelope {items,total,page,limit}', () => {
     const dto = mapper.toListResponse({ items: [order()], total: 9 }, 2, 10);
     expect(dto.items).toHaveLength(1);

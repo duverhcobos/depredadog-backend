@@ -8,6 +8,7 @@ import { ProductImageSchema } from '../../infrastructure/database/schemas/produc
 import { ProductModifierGroupSchema } from '../../infrastructure/database/schemas/product-modifier-group.schema';
 import { ProductModifierOptionSchema } from '../../infrastructure/database/schemas/product-modifier-option.schema';
 import { ProductSchema } from '../../infrastructure/database/schemas/product.schema';
+import { PromotionsModule } from '../promotions/promotions.module';
 import { CatalogController } from './presentation/controllers/catalog.controller';
 import { CatalogService } from './application/services/catalog.service';
 import { CatalogMapper } from './application/mappers/catalog.mapper';
@@ -27,6 +28,7 @@ import { CatalogRepository } from './infrastructure/repositories/catalog.reposit
       ProductModifierGroupSchema,
       ProductModifierOptionSchema,
     ]),
+    PromotionsModule,
   ],
   controllers: [CatalogController],
   providers: [
@@ -37,4 +39,4 @@ import { CatalogRepository } from './infrastructure/repositories/catalog.reposit
   ],
   exports: [CATALOG_REPOSITORY],
 })
-export class CatalogModule { }
+export class CatalogModule {}

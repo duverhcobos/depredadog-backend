@@ -9,6 +9,8 @@ import { Product } from '../../src/modules/catalog/domain/entities/product.entit
 import { ProductImage } from '../../src/modules/catalog/domain/entities/product-image.entity';
 import { ProductModifierGroup } from '../../src/modules/catalog/domain/entities/product-modifier-group.entity';
 import { ProductModifierOption } from '../../src/modules/catalog/domain/entities/product-modifier-option.entity';
+import { Promotion } from '../../src/modules/promotions/domain/entities/promotion.entity';
+import { PromotionKind } from '../../src/modules/promotions/domain/enums/promotion-kind.enum';
 import {
   activateAndGetTokens,
   cleanAuthTables,
@@ -25,7 +27,7 @@ describe('GET /catalog (e2e)', () => {
   async function cleanCatalogTables(): Promise<void> {
     const ds = app.get(DataSource);
     await ds.query(
-      'TRUNCATE product_modifier_options, product_modifier_groups, modifier_options, modifier_groups, combo_items, product_images, products, categories RESTART IDENTITY CASCADE',
+      'TRUNCATE product_modifier_options, product_modifier_groups, modifier_options, modifier_groups, combo_items, product_images, products, categories, promotions RESTART IDENTITY CASCADE',
     );
   }
 
@@ -253,5 +255,123 @@ describe('GET /catalog (e2e)', () => {
     const product = body.categories[0].products[0];
     expect(product.name).toBe('El Agotado');
     expect(product.isAvailable).toBe(false);
+  });
+
+  // §027 — rail de Combos: solo activas, por sort_order, con display
+  // formateado por kind (la app no interpreta la mecánica).
+  it('promotions: activas por sort_order con display por kind; inactiva no viaja', async () => {
+    await seedMenu();
+    const ds = app.get(DataSource);
+    const perroId = (
+      await ds.query<{ id: string }[]>(
+        `SELECT id FROM products WHERE slug = 'el-cachorro'`,
+      )
+    )[0].id;
+    // El menú del spec no trae papas — un uuid fijo (no el literal
+    // 'papas': products.id es uuid y el motor de promos consulta por
+    // él al crear pedidos en este mismo DB de test).
+    const PAPAS_ID = 'ca7a1090-0000-4000-8000-000000000231';
+    const papasId =
+      (
+        await ds.query<{ id: string }[]>(
+          `SELECT id FROM products WHERE slug = 'papas' LIMIT 1`,
+        )
+      )[0]?.id ?? PAPAS_ID;
+    await ds.getRepository(Promotion).save([
+      {
+        slug: 'papas-gratis',
+        name: 'Papas Gratis',
+        tagline: 'Con 2 o 3 perros, las papas van de la casa.',
+        kind: PromotionKind.FREE_ITEM,
+        sortOrder: 1,
+        config: {
+          eligibleProductIds: [perroId],
+          minQty: 2,
+          maxQty: 3,
+          freeProductId: papasId,
+          freeQty: 1,
+        },
+      },
+      {
+        slug: 'combo-cachorro',
+        name: 'Combo Cachorro',
+        tagline: 'Un antojo bien cazado.',
+        kind: PromotionKind.FIXED_BUNDLE,
+        sortOrder: 0,
+        config: {
+          items: [
+            { productId: perroId, qty: 1 },
+            { productId: PAPAS_ID, qty: 1 },
+          ],
+          price: 17000,
+        },
+      },
+      {
+        slug: 'manada-15',
+        name: 'Manada −15%',
+        tagline: 'Cuatro perros o más: la manada descuenta.',
+        kind: PromotionKind.PERCENT_OFF,
+        sortOrder: 3,
+        config: {
+          eligibleProductIds: [perroId],
+          minQty: 4,
+          percent: 15,
+          roundDownTo: 500,
+        },
+      },
+      {
+        slug: 'promo-apagada',
+        name: 'Apagada',
+        tagline: null,
+        kind: PromotionKind.SHOWCASE,
+        sortOrder: 2,
+        isActive: false,
+        config: { priceLabel: '$0' },
+      },
+    ]);
+
+    const res = await request(app.getHttpServer() as App)
+      .get('/catalog')
+      .expect(200);
+
+    const body = res.body as {
+      promotions: {
+        slug: string;
+        name: string;
+        tagline: string | null;
+        kind: string;
+        sortOrder: number;
+        display: {
+          priceLabel: string | null;
+          componentProductIds?: string[];
+          eligibleProductIds?: string[];
+          freeProductId?: string;
+        };
+      }[];
+    };
+    // sort_order manda en el rail; la inactiva no viaja.
+    expect(body.promotions.map((p) => p.slug)).toEqual([
+      'combo-cachorro',
+      'papas-gratis',
+      'manada-15',
+    ]);
+
+    const combo = body.promotions[0];
+    expect(combo.kind).toBe('fixed_bundle');
+    expect(combo.tagline).toBe('Un antojo bien cazado.');
+    expect(combo.display.priceLabel).toBe('$17.000');
+    expect(combo.display.componentProductIds).toEqual([perroId, PAPAS_ID]);
+
+    const gratis = body.promotions[1];
+    expect(gratis.kind).toBe('free_item');
+    // "desde" = minQty × elegible ordenable más barato (14.000 × 2).
+    expect(gratis.display.priceLabel).toBe('desde $28.000');
+    expect(gratis.display.eligibleProductIds).toEqual([perroId]);
+    expect(gratis.display.freeProductId).toBe(papasId);
+
+    const manada = body.promotions[2];
+    expect(manada.kind).toBe('percent_off');
+    expect(manada.display.priceLabel).toBe('−15%');
+    expect(manada.display.eligibleProductIds).toEqual([perroId]);
   });
 });

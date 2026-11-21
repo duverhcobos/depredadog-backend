@@ -11,7 +11,7 @@ export class CatalogService {
   ) {}
 
   async getCatalog(): Promise<CatalogResponseDto> {
-    const categories = await this.getCatalogUseCase.execute();
-    return this.catalogMapper.toCatalogResponse(categories);
+    const result = await this.getCatalogUseCase.execute();
+    return this.catalogMapper.toCatalogResponse(result);
   }
 }

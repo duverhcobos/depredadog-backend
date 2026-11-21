@@ -75,6 +75,7 @@ actualiza; la cola del kanban ordena por él).
   "subtotal": 14000,
   "deliveryFee": 2000,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 16000,
   "notes": null,
   "cancelReason": null,

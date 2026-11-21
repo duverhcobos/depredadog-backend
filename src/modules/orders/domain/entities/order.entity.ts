@@ -1,5 +1,6 @@
 import { Address } from '../../../auth/domain/entities/address.entity';
 import { Payment } from '../../../payments/domain/entities/payment.entity';
+import type { AppliedPromotion } from '../../../promotions/domain/services/promotion-evaluator.service';
 import { OrderChannel } from '../enums/order-channel.enum';
 import { OrderServiceType } from '../enums/order-service-type.enum';
 import { OrderStatus } from '../enums/order-status.enum';
@@ -28,6 +29,9 @@ export class Order {
   subtotal!: number;
   deliveryFee = 0;
   discount = 0;
+  /** Snapshot de las promos del motor (§027) — sobrevive a desactivar
+   * o editar la oferta después. null = pedido anterior al motor. */
+  appliedPromotions: AppliedPromotion[] | null = null;
   total!: number;
   notes: string | null = null;
   cancelReason: string | null = null;

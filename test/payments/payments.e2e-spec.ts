@@ -36,7 +36,7 @@ describe('/payments/webhook/:provider (e2e)', () => {
   async function cleanCatalogTables(): Promise<void> {
     const ds = app.get(DataSource);
     await ds.query(
-      'TRUNCATE product_modifier_options, product_modifier_groups, modifier_options, modifier_groups, combo_items, product_images, products, categories RESTART IDENTITY CASCADE',
+      'TRUNCATE product_modifier_options, product_modifier_groups, modifier_options, modifier_groups, combo_items, product_images, products, categories, promotions RESTART IDENTITY CASCADE',
     );
   }
 

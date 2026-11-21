@@ -20,6 +20,7 @@ import {
   ORDER_REPOSITORY,
 } from '../../domain/repositories/order.repository.interface';
 import { OrderItemsBuilder } from '../../domain/services/order-items-builder.service';
+import { OrderPromotionsApplier } from '../services/order-promotions.service';
 import {
   CreateInPersonOrderCommand,
   CreateInPersonOrderUseCase,
@@ -50,6 +51,7 @@ describe('CreateInPersonOrderUseCase', () => {
   let gateway: jest.Mocked<IPaymentGateway>;
   let store: jest.Mocked<IStoreRepository>;
   let itemsBuilder: { build: jest.Mock };
+  let promoApplier: { apply: jest.Mock };
 
   const base: CreateInPersonOrderCommand = {
     adminId: 'admin1',
@@ -88,6 +90,13 @@ describe('CreateInPersonOrderUseCase', () => {
       getTablesByIds: jest.fn(() => Promise.resolve([table()])),
     };
     itemsBuilder = { build: jest.fn(() => Promise.resolve([builtItem()])) };
+    // Applier mockeado — el motor tiene su spec exhaustivo; acá se
+    // prueba que el use-case propaga su resultado.
+    promoApplier = {
+      apply: jest.fn((items: OrderItem[]) =>
+        Promise.resolve({ items, discount: 0, appliedPromotions: [] }),
+      ),
+    };
     const config = { get: jest.fn().mockReturnValue('America/Bogota') };
 
     const module = await Test.createTestingModule({
@@ -97,6 +106,7 @@ describe('CreateInPersonOrderUseCase', () => {
         { provide: PAYMENT_GATEWAY, useValue: gateway },
         { provide: STORE_REPOSITORY, useValue: store },
         { provide: OrderItemsBuilder, useValue: itemsBuilder },
+        { provide: OrderPromotionsApplier, useValue: promoApplier },
         { provide: ConfigService, useValue: config },
       ],
     }).compile();
@@ -210,6 +220,37 @@ describe('CreateInPersonOrderUseCase', () => {
     expect(saved.payment?.status).toBe(PaymentStatus.PENDING);
     expect(saved.payment?.payerPhone).toBeNull();
     expect(saved.payment?.provider).toBeNull();
+  });
+
+  // §027 — el mostrador físico cobra igual que la app: el descuento y
+  // los ítems inyectados del motor entran al agregado presencial.
+  it('aplica descuento + ítem inyectado del motor de promociones', async () => {
+    const papas = builtItem();
+    papas.productId = 'p-papas';
+    papas.productName = 'Papas a la francesa';
+    papas.unitPrice = 5000;
+    papas.lineTotal = 5000;
+    promoApplier.apply.mockImplementation((items: OrderItem[]) =>
+      Promise.resolve({
+        items: [...items, papas],
+        discount: 5000,
+        appliedPromotions: [
+          { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+        ],
+      }),
+    );
+
+    await useCase.execute(base);
+
+    const saved = orders.createAggregate.mock.calls[0][0];
+    expect(saved.items).toHaveLength(2);
+    expect(saved.subtotal).toBe(19000);
+    expect(saved.discount).toBe(5000);
+    expect(saved.total).toBe(14000); // subtotal − discount, sin fee
+    expect(saved.appliedPromotions).toEqual([
+      { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+    ]);
+    expect(saved.payment?.amount).toBe(14000);
   });
 
   it('no evalúa horario ni mínimo de delivery (reglas del canal online)', async () => {

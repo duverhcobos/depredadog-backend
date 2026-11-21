@@ -26,6 +26,7 @@ import {
   OrderItemsBuilder,
   OrderItemInput,
 } from '../../domain/services/order-items-builder.service';
+import { OrderPromotionsApplier } from '../services/order-promotions.service';
 import { AdminOrderResult } from './admin-order-results';
 
 export interface CreateInPersonOrderCommand {
@@ -55,6 +56,7 @@ export class CreateInPersonOrderUseCase {
     @Inject(STORE_REPOSITORY)
     private readonly store: IStoreRepository,
     private readonly itemsBuilder: OrderItemsBuilder,
+    private readonly promoApplier: OrderPromotionsApplier,
     private readonly config: ConfigService,
   ) {}
 
@@ -64,7 +66,11 @@ export class CreateInPersonOrderUseCase {
     // 2. Mesa del dine_in — existe y está activa (404 honesto).
     const table = await this.resolveTable(cmd);
     // 3. Ítems revalidados contra catálogo — mismos 409 que online.
-    const items = await this.itemsBuilder.build(cmd.items);
+    let items = await this.itemsBuilder.build(cmd.items);
+    // 3b. Motor de promociones (§027) — el mostrador físico cobra igual
+    // que la app: mismos patrones, mismo descuento, mismos inyectados.
+    const promo = await this.promoApplier.apply(items);
+    items = promo.items;
     const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
     // 4. Agregado presencial: sin cliente, con quien lo tomó y la mesa.
     const tz = this.config.get<string>('store.timezone')!;
@@ -83,7 +89,9 @@ export class CreateInPersonOrderUseCase {
     order.statusChangedAt = new Date();
     order.subtotal = subtotal;
     order.deliveryFee = 0;
-    order.total = subtotal;
+    order.discount = promo.discount;
+    order.appliedPromotions = promo.appliedPromotions;
+    order.total = subtotal - promo.discount;
     order.notes = cmd.notes?.trim() || null;
     order.items = items;
     order.payment = await this.buildPayment(cmd, order.total);

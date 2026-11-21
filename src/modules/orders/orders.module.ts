@@ -8,11 +8,13 @@ import { PaymentSchema } from '../../infrastructure/database/schemas/payment.sch
 import { AuthModule } from '../auth/auth.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { PromotionsModule } from '../promotions/promotions.module';
 import { StoreModule } from '../store/store.module';
 import { AdminOrdersController } from './presentation/controllers/admin-orders.controller';
 import { OrdersController } from './presentation/controllers/orders.controller';
 import { PaymentsWebhookController } from './presentation/controllers/payments-webhook.controller';
 import { OrdersService } from './application/services/orders.service';
+import { OrderPromotionsApplier } from './application/services/order-promotions.service';
 import { OrderMapper } from './application/mappers/order.mapper';
 import { AdminTablesMapper } from './application/mappers/admin-tables.mapper';
 import { CancelMyOrderUseCase } from './application/use-cases/cancel-my-order.use-case';
@@ -47,6 +49,7 @@ import { OrderRepository } from './infrastructure/repositories/order.repository'
     StoreModule,
     AuthModule,
     PaymentsModule,
+    PromotionsModule,
   ],
   controllers: [
     OrdersController,
@@ -71,6 +74,7 @@ import { OrderRepository } from './infrastructure/repositories/order.repository'
     PreviewDayCloseUseCase,
     CloseDayUseCase,
     OrderItemsBuilder,
+    OrderPromotionsApplier,
     { provide: ORDER_REPOSITORY, useClass: OrderRepository },
     { provide: DAY_CLOSE_REPOSITORY, useClass: DayCloseRepository },
   ],

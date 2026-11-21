@@ -11,6 +11,8 @@ import { ProductModifierGroup } from '../../src/modules/catalog/domain/entities/
 import { ProductModifierOption } from '../../src/modules/catalog/domain/entities/product-modifier-option.entity';
 import { BusinessHour } from '../../src/modules/store/domain/entities/business-hour.entity';
 import { StoreSettings } from '../../src/modules/store/domain/entities/store-settings.entity';
+import { Promotion } from '../../src/modules/promotions/domain/entities/promotion.entity';
+import { PromotionKind } from '../../src/modules/promotions/domain/enums/promotion-kind.enum';
 import {
   activateAndGetTokens,
   cleanAuthTables,
@@ -40,7 +42,7 @@ describe('/orders (e2e)', () => {
   async function cleanCatalogTables(): Promise<void> {
     const ds = app.get(DataSource);
     await ds.query(
-      'TRUNCATE product_modifier_options, product_modifier_groups, modifier_options, modifier_groups, combo_items, product_images, products, categories RESTART IDENTITY CASCADE',
+      'TRUNCATE product_modifier_options, product_modifier_groups, modifier_options, modifier_groups, combo_items, product_images, products, categories, promotions RESTART IDENTITY CASCADE',
     );
   }
 
@@ -189,9 +191,7 @@ describe('/orders (e2e)', () => {
     return res.body as Record<string, unknown>;
   }
 
-  async function createAddress(
-    token = tokens.accessToken,
-  ): Promise<string> {
+  async function createAddress(token = tokens.accessToken): Promise<string> {
     const res = await request(server())
       .post('/addresses')
       .set(auth(token))
@@ -242,10 +242,7 @@ describe('/orders (e2e)', () => {
     expect(items[0].productName).toBe('El Cachorro');
     // Snapshots §016 — la app pinta foto y "Lleva:" con esto.
     expect(items[0].productSlug).toBe('el-cachorro');
-    expect(items[0].includedNames).toEqual([
-      'Queso mozzarella',
-      'Salchicha',
-    ]);
+    expect(items[0].includedNames).toEqual(['Queso mozzarella', 'Salchicha']);
     expect(items[0].unitPrice).toBe(16000);
     const mods = items[0].modifiers as Record<string, unknown>[];
     expect(mods).toHaveLength(1);
@@ -291,10 +288,7 @@ describe('/orders (e2e)', () => {
       .set(auth(tokens.accessToken))
       .expect(200);
     const detailMods = (
-      (res.body as Record<string, unknown>).items as Record<
-        string,
-        unknown
-      >[]
+      (res.body as Record<string, unknown>).items as Record<string, unknown>[]
     )[0].modifiers as Record<string, unknown>[];
     expect(detailMods[0].times).toBe(2);
     expect(detailMods[0].priceDelta).toBe(4000);
@@ -346,7 +340,10 @@ describe('/orders (e2e)', () => {
   it('POST con mismo clientRequestId → 201 con el MISMO id (idempotente)', async () => {
     const clientRequestId = randomUUID();
     const first = await postOrder({ ...pickupTransferBody(), clientRequestId });
-    const second = await postOrder({ ...pickupTransferBody(), clientRequestId });
+    const second = await postOrder({
+      ...pickupTransferBody(),
+      clientRequestId,
+    });
 
     expect(second.id).toBe(first.id);
     expect(second.orderNumber).toBe(first.orderNumber);
@@ -451,7 +448,10 @@ describe('/orders (e2e)', () => {
             productId: product.id,
             quantity: 1,
             modifiers: [
-              { optionId: '00000000-0000-4000-8000-000000000000', action: 'added' },
+              {
+                optionId: '00000000-0000-4000-8000-000000000000',
+                action: 'added',
+              },
             ],
           },
         ],
@@ -589,7 +589,9 @@ describe('/orders (e2e)', () => {
       .set(auth(tokens.accessToken))
       .send({})
       .expect(201);
-    await ds.query(`UPDATE orders SET status = 'done' WHERE id IN (SELECT id FROM orders WHERE status = 'pending')`);
+    await ds.query(
+      `UPDATE orders SET status = 'done' WHERE id IN (SELECT id FROM orders WHERE status = 'pending')`,
+    );
 
     const res = await request(server())
       .get('/orders?bucket=history&limit=1&page=1')
@@ -619,10 +621,7 @@ describe('/orders (e2e)', () => {
     const items = detail.items as Record<string, unknown>[];
     // El detalle repite los snapshots §016 del POST.
     expect(items[0].productSlug).toBe('el-cachorro');
-    expect(items[0].includedNames).toEqual([
-      'Queso mozzarella',
-      'Salchicha',
-    ]);
+    expect(items[0].includedNames).toEqual(['Queso mozzarella', 'Salchicha']);
     const mods = items[0].modifiers as Record<string, unknown>[];
     expect(mods).toHaveLength(1);
     expect(mods[0].optionName).toBe('Tocineta');
@@ -686,14 +685,16 @@ describe('/orders (e2e)', () => {
       .get(`/orders/${body.id as string}`)
       .set(auth(tokens.accessToken))
       .expect(200);
-    const detailItems = (res.body as Record<string, unknown>)
-      .items as Record<string, unknown>[];
+    const detailItems = (res.body as Record<string, unknown>).items as Record<
+      string,
+      unknown
+    >[];
     expect(detailItems[0].productSlug).toBe('el-cachorro');
     expect(detailItems[0].includedNames).toEqual(['Salchicha']);
     const detailMods = detailItems[0].modifiers as Record<string, unknown>[];
-    expect(
-      detailMods.find((m) => m.action === 'added')!.replacesOptionId,
-    ).toBe(mozzarella.id);
+    expect(detailMods.find((m) => m.action === 'added')!.replacesOptionId).toBe(
+      mozzarella.id,
+    );
     expect(
       detailMods.find((m) => m.action === 'removed')!.replacesOptionId,
     ).toBeNull();
@@ -765,5 +766,225 @@ describe('/orders (e2e)', () => {
       .expect(409);
     expect((res.body as { message: string }).message).toBe('Store is closed');
     expect(res.body.errorCode).toBe('STORE_CLOSED');
+  });
+
+  // §027 — motor de promociones: la carta del dueño evaluada contra el
+  // contenido del pedido (ítems sueltos → descuento server-side).
+  describe('promociones', () => {
+    let papas: Product;
+    let bebida: Product;
+
+    // Carta §027 adaptada al menú del spec: cachorro+papas bundle,
+    // 2-3 perros → papas gratis, 4+ → −15%.
+    async function seedPromos(): Promise<void> {
+      const ds = app.get(DataSource);
+      papas = await ds.getRepository(Product).save({
+        categoryId: product.categoryId,
+        name: 'Papas a la francesa',
+        slug: 'papas-francesa',
+        basePrice: 5000,
+        sortOrder: 8,
+      });
+      bebida = await ds.getRepository(Product).save({
+        categoryId: product.categoryId,
+        name: 'Coca Cola 400 ml',
+        slug: 'coca-cola-400',
+        basePrice: 3000,
+        sortOrder: 9,
+      });
+      await ds.getRepository(Promotion).save([
+        {
+          slug: 'combo-cachorro',
+          name: 'Combo Cachorro',
+          tagline: 'Un antojo bien cazado.',
+          kind: PromotionKind.FIXED_BUNDLE,
+          sortOrder: 0,
+          config: {
+            items: [
+              { productId: product.id, qty: 1 },
+              { productId: papas.id, qty: 1 },
+            ],
+            price: 17000,
+          },
+        },
+        {
+          slug: 'papas-gratis',
+          name: 'Papas Gratis',
+          tagline: 'Con 2 o 3 perros, las papas van de la casa.',
+          kind: PromotionKind.FREE_ITEM,
+          sortOrder: 1,
+          config: {
+            eligibleProductIds: [product.id],
+            minQty: 2,
+            maxQty: 3,
+            freeProductId: papas.id,
+            freeQty: 1,
+          },
+        },
+        {
+          slug: 'manada-15',
+          name: 'Manada −15%',
+          tagline: 'Cuatro perros o más: la manada descuenta.',
+          kind: PromotionKind.PERCENT_OFF,
+          sortOrder: 2,
+          config: {
+            eligibleProductIds: [product.id],
+            minQty: 4,
+            percent: 15,
+            roundDownTo: 500,
+          },
+        },
+      ]);
+    }
+
+    function itemsOf(...productIds: string[]): Record<string, unknown>[] {
+      return productIds.map((productId) => ({
+        productId,
+        quantity: 1,
+        modifiers: [],
+      }));
+    }
+
+    beforeEach(async () => {
+      await app
+        .get(DataSource)
+        .query('TRUNCATE promotions RESTART IDENTITY CASCADE');
+      await seedPromos();
+    });
+
+    it('combo-cachorro: 1× perro + 1× papas → discount 2000 y snapshot aplicado', async () => {
+      const body = await postOrder({
+        serviceType: 'pickup',
+        items: itemsOf(product.id, papas.id),
+        paymentMethod: 'transfer',
+        payerPhone: '3001234567',
+      });
+
+      expect(body.subtotal).toBe(19000);
+      expect(body.discount).toBe(2000);
+      expect(body.total).toBe(17000);
+      expect(body.appliedPromotions).toEqual([
+        { slug: 'combo-cachorro', name: 'Combo Cachorro', saving: 2000 },
+      ]);
+      // El pago cobra el total neto.
+      expect((body.payment as Record<string, unknown>).amount).toBe(17000);
+
+      // Round-trip: el detalle repite el snapshot.
+      const res = await request(server())
+        .get(`/orders/${body.id as string}`)
+        .set(auth(tokens.accessToken))
+        .expect(200);
+      expect((res.body as Record<string, unknown>).appliedPromotions).toEqual([
+        { slug: 'combo-cachorro', name: 'Combo Cachorro', saving: 2000 },
+      ]);
+    });
+
+    it('papas-gratis: 2× perro sin papas → papas inyectada a precio real, discount 5000', async () => {
+      const body = await postOrder({
+        serviceType: 'pickup',
+        items: [{ productId: product.id, quantity: 2, modifiers: [] }],
+        paymentMethod: 'transfer',
+        payerPhone: '3001234567',
+      });
+
+      const items = body.items as Record<string, unknown>[];
+      expect(items).toHaveLength(2);
+      const gratis = items.find((i) => i.productId === papas.id)!;
+      // Ítem real con snapshots — el discount lo deja neto en $0.
+      expect(gratis.productName).toBe('Papas a la francesa');
+      expect(gratis.unitPrice).toBe(5000);
+      expect(body.subtotal).toBe(33000); // 28.000 + 5.000 inyectada
+      expect(body.discount).toBe(5000);
+      expect(body.total).toBe(28000);
+      expect(body.appliedPromotions).toEqual([
+        { slug: 'papas-gratis', name: 'Papas Gratis', saving: 5000 },
+      ]);
+    });
+
+    it('papas-gratis: 2× perro + 2 papas pedidas → 1 gratis + 1 pagada (5000)', async () => {
+      const body = await postOrder({
+        serviceType: 'pickup',
+        items: [
+          { productId: product.id, quantity: 2, modifiers: [] },
+          { productId: papas.id, quantity: 2, modifiers: [] },
+        ],
+        paymentMethod: 'transfer',
+        payerPhone: '3001234567',
+      });
+
+      expect(body.subtotal).toBe(38000);
+      expect(body.discount).toBe(5000);
+      expect(body.total).toBe(33000);
+      // Sin inyección — la papas ya venía en el pedido.
+      expect(body.items).toHaveLength(2);
+    });
+
+    it('manada-15: 4× perro → −15% redondeado a $500 (8000), SIN papas gratis', async () => {
+      const body = await postOrder({
+        serviceType: 'pickup',
+        items: [{ productId: product.id, quantity: 4, modifiers: [] }],
+        paymentMethod: 'transfer',
+        payerPhone: '3001234567',
+      });
+
+      // 4×14.000 = 56.000 → 15% = 8.400 → 8.000 (tier excluyente).
+      expect(body.discount).toBe(8000);
+      expect(body.total).toBe(48000);
+      expect(body.items).toHaveLength(1); // sin inyección
+      expect(body.appliedPromotions).toEqual([
+        { slug: 'manada-15', name: 'Manada −15%', saving: 8000 },
+      ]);
+    });
+
+    it('bebidas no suman elegibilidad ni descuentan', async () => {
+      const body = await postOrder({
+        serviceType: 'pickup',
+        items: [
+          { productId: product.id, quantity: 1, modifiers: [] },
+          { productId: bebida.id, quantity: 3, modifiers: [] },
+        ],
+        paymentMethod: 'transfer',
+        payerPhone: '3001234567',
+      });
+
+      expect(body.discount).toBe(0);
+      expect(body.appliedPromotions).toEqual([]);
+      expect(body.total).toBe(23000);
+    });
+
+    it('promo inactiva no evalúa', async () => {
+      await app
+        .get(DataSource)
+        .query(`UPDATE promotions SET is_active = false`);
+      const body = await postOrder({
+        serviceType: 'pickup',
+        items: [{ productId: product.id, quantity: 2, modifiers: [] }],
+        paymentMethod: 'transfer',
+        payerPhone: '3001234567',
+      });
+      expect(body.discount).toBe(0);
+      expect(body.appliedPromotions).toEqual([]);
+      expect(body.items).toHaveLength(1);
+    });
+
+    it('minDeliveryOrder evalúa subtotal − discount → 409 cuando baja del mínimo', async () => {
+      // 2 perros + papas inyectada: bruto 33.000 − 5.000 = 28.000 <
+      // mínimo 30.000 → la regla mide lo que el cliente paga.
+      await app
+        .get(DataSource)
+        .query(`UPDATE store_settings SET min_delivery_order = 30000`);
+      const res = await request(server())
+        .post('/orders')
+        .set(auth(tokens.accessToken))
+        .send({
+          serviceType: 'delivery',
+          items: [{ productId: product.id, quantity: 2, modifiers: [] }],
+          newAddress: { landmark: 'Frente al coliseo' },
+          contactPhone: '3009876543',
+          paymentMethod: 'cash',
+        })
+        .expect(409);
+      expect(res.body.errorCode).toBe('MIN_ORDER_AMOUNT');
+    });
   });
 });

@@ -1,5 +1,6 @@
 import dataSource from '../../../../typeorm.config';
 import { seedCatalogData } from './catalog.seed';
+import { seedPromotionsData } from './promotions.seed';
 
 // Reset de base de datos (propuesta 025): wipe de TODAS las tablas de
 // negocio + re-seed de lo real — menú (vía seedCatalogData), store_settings
@@ -30,6 +31,7 @@ const businessHours = [
 // wipe sea auditable. "migrations" NO está — es el historial del esquema.
 const BUSINESS_TABLES = [
   'payments',
+  'promotions',
   'order_item_modifiers',
   'order_items',
   'orders',
@@ -68,6 +70,8 @@ async function main(): Promise<void> {
       );
 
       await seedCatalogData(manager);
+      // Carta de combos (§027) — 4 ofertas, idempotente por slug.
+      await seedPromotionsData(manager);
 
       // Fila mínima obligatoria — sin ella /store/config → 404 y el home
       // de la app muestra error. Valores placeholder a confirmar.

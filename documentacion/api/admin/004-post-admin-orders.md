@@ -84,6 +84,7 @@
   "subtotal": 28000,
   "deliveryFee": 0,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 28000,
   "notes": "Sin picante en uno",
   "cancelReason": null,
@@ -169,3 +170,7 @@ online; el local atiende en persona.
   preocupación del canal online; el dueño ve la comanda al momento.
 - **`taken_by`** queda registrado con el `userId` del admin del JWT
   (auditoría interna — no viaja en la respuesta).
+- **Promociones (§027)** — el motor evalúa el pedido igual que en el
+  canal online (el mostrador físico cobra lo mismo que la app):
+  `discount` + `appliedPromotions` llegan en la respuesta y las papas
+  gratis se auto-inyectan si la regla aplica.

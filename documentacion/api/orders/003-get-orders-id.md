@@ -36,6 +36,7 @@
   "subtotal": 14000,
   "deliveryFee": 2000,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 16000,
   "notes": "Tocar el timbre dos veces",
   "cancelReason": null,

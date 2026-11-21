@@ -31,6 +31,12 @@ export class OrderPaymentResponseDto {
   provider!: string | null;
   providerReference!: string | null;
 }
+/** Snapshot de una promo del motor (§027) — lo que descontó el pedido. */
+export class AppliedPromotionResponseDto {
+  slug!: string;
+  name!: string;
+  saving!: number;
+}
 export class OrderResponseDto {
   id!: string;
   orderNumber!: number;
@@ -43,6 +49,8 @@ export class OrderResponseDto {
   subtotal!: number;
   deliveryFee!: number;
   discount!: number;
+  /** Promos aplicadas al crear — [] en pedidos sin promo o viejos. */
+  appliedPromotions!: AppliedPromotionResponseDto[];
   total!: number;
   notes!: string | null;
   cancelReason!: string | null;

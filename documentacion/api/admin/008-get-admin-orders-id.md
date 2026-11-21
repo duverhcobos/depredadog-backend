@@ -43,6 +43,7 @@ dirección §037.B incluidos) pero con `items[].modifiers` poblado.
   "subtotal": 16000,
   "deliveryFee": 2000,
   "discount": 0,
+  "appliedPromotions": [],
   "total": 18000,
   "notes": "Tocar el timbre dos veces",
   "cancelReason": null,
